@@ -1,0 +1,19 @@
+# Binary
+box
+dist/
+
+# Generated client (reference only, not part of build)
+box-go-generated/
+
+# OpenAPI spec
+box-openapi.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
