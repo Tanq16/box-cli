@@ -1,23 +1,77 @@
-BINARY_NAME=box
+.PHONY: help clean build build-for build-all run tidy version
 
-.PHONY: build build-all run tidy clean
+# =============================================================================
+# Variables
+# =============================================================================
+APP_NAME := box
 
-build:
-	go build -ldflags "-s -w" -o $(BINARY_NAME) .
+# Build variables (set by CI or use defaults)
+VERSION ?= dev-build
+GOOS ?= $(shell go env GOOS)
+GOARCH ?= $(shell go env GOARCH)
 
-build-all:
-	GOOS=linux   GOARCH=amd64 go build -ldflags "-s -w" -o dist/$(BINARY_NAME)-linux-amd64 .
-	GOOS=linux   GOARCH=arm64 go build -ldflags "-s -w" -o dist/$(BINARY_NAME)-linux-arm64 .
-	GOOS=darwin  GOARCH=amd64 go build -ldflags "-s -w" -o dist/$(BINARY_NAME)-darwin-amd64 .
-	GOOS=darwin  GOARCH=arm64 go build -ldflags "-s -w" -o dist/$(BINARY_NAME)-darwin-arm64 .
-	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o dist/$(BINARY_NAME)-windows-amd64.exe .
-	GOOS=windows GOARCH=arm64 go build -ldflags "-s -w" -o dist/$(BINARY_NAME)-windows-arm64.exe .
+# Console colors
+CYAN := \033[0;36m
+GREEN := \033[0;32m
+NC := \033[0m
 
-run:
-	go run . $(ARGS)
+# =============================================================================
+# Help
+# =============================================================================
+help: ## Show this help
+	@echo "$(CYAN)Available targets:$(NC)"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
 
-tidy:
-	go mod tidy
+.DEFAULT_GOAL := help
 
-clean:
-	rm -rf dist/ $(BINARY_NAME)
+clean: ## Remove built binaries
+	@rm -f $(APP_NAME) $(APP_NAME)-*
+	@echo "$(GREEN)Cleaned$(NC)"
+
+# =============================================================================
+# Build
+# =============================================================================
+build: ## Build binary for current platform
+	@go build -ldflags="-s -w -X 'github.com/tanq16/box/cmd.AppVersion=$(VERSION)'" -o $(APP_NAME) .
+	@echo "$(GREEN)Built: ./$(APP_NAME)$(NC)"
+
+build-for: ## Build binary for specified GOOS/GOARCH
+	@CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="-s -w -X 'github.com/tanq16/box/cmd.AppVersion=$(VERSION)'" -o $(APP_NAME)-$(GOOS)-$(GOARCH) .
+	@echo "$(GREEN)Built: ./$(APP_NAME)-$(GOOS)-$(GOARCH)$(NC)"
+
+build-all: ## Build all platform binaries
+	@$(MAKE) build-for GOOS=linux GOARCH=amd64
+	@$(MAKE) build-for GOOS=linux GOARCH=arm64
+	@$(MAKE) build-for GOOS=darwin GOARCH=amd64
+	@$(MAKE) build-for GOOS=darwin GOARCH=arm64
+	@$(MAKE) build-for GOOS=windows GOARCH=amd64
+	@$(MAKE) build-for GOOS=windows GOARCH=arm64
+
+# =============================================================================
+# Development
+# =============================================================================
+run: ## Run with arguments (make run ARGS="list /")
+	@go run . $(ARGS)
+
+tidy: ## Run go mod tidy
+	@go mod tidy
+
+# =============================================================================
+# Version
+# =============================================================================
+version: ## Calculate next version from commit message
+	@LATEST_TAG=$$(git tag --sort=-v:refname | head -n1 || echo "0.0.0"); \
+	LATEST_TAG=$${LATEST_TAG#v}; \
+	MAJOR=$$(echo "$$LATEST_TAG" | cut -d. -f1); \
+	MINOR=$$(echo "$$LATEST_TAG" | cut -d. -f2); \
+	PATCH=$$(echo "$$LATEST_TAG" | cut -d. -f3); \
+	MAJOR=$${MAJOR:-0}; MINOR=$${MINOR:-0}; PATCH=$${PATCH:-0}; \
+	COMMIT_MSG="$$(git log -1 --pretty=%B)"; \
+	if echo "$$COMMIT_MSG" | grep -q "\[major-release\]"; then \
+		MAJOR=$$((MAJOR + 1)); MINOR=0; PATCH=0; \
+	elif echo "$$COMMIT_MSG" | grep -q "\[minor-release\]"; then \
+		MINOR=$$((MINOR + 1)); PATCH=0; \
+	else \
+		PATCH=$$((PATCH + 1)); \
+	fi; \
+	echo "v$${MAJOR}.$${MINOR}.$${PATCH}"

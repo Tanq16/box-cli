@@ -8,14 +8,15 @@ type BoxCredentials struct {
 }
 
 type BoxItem struct {
-	Type       string  `json:"type"`
-	ID         string  `json:"id"`
-	Name       string  `json:"name"`
-	Size       *int64  `json:"size,omitempty"`
-	SHA1       string  `json:"sha1,omitempty"`
-	Parent     *BoxRef `json:"parent,omitempty"`
-	ModifiedAt *string `json:"modified_at,omitempty"`
-	SharedLink *BoxSharedLink `json:"shared_link,omitempty"`
+	Type           string          `json:"type"`
+	ID             string          `json:"id"`
+	Name           string          `json:"name"`
+	Size           *int64          `json:"size,omitempty"`
+	SHA1           string          `json:"sha1,omitempty"`
+	Parent         *BoxRef         `json:"parent,omitempty"`
+	ModifiedAt     *string         `json:"modified_at,omitempty"`
+	SharedLink     *BoxSharedLink  `json:"shared_link,omitempty"`
+	ItemCollection *BoxFolderItems `json:"item_collection,omitempty"`
 }
 
 type BoxRef struct {

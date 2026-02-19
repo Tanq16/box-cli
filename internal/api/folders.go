@@ -216,6 +216,133 @@ func FindOrCreateFolder(c *client.BoxClient, folderName string, parentID string)
 	return folder.ID, nil
 }
 
+// GetFolderInfo retrieves folder metadata by ID.
+func GetFolderInfo(c *client.BoxClient, folderID string) (*types.BoxItem, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/folders/%s", client.APIBaseURL, folderID), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	q := req.URL.Query()
+	q.Add("fields", "type,name,id,size,modified_at,parent,item_collection")
+	req.URL.RawQuery = q.Encode()
+
+	var item types.BoxItem
+	_, err = c.DoJSON(req, &item)
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+// CreateFolder creates a new folder under parentID.
+func CreateFolder(c *client.BoxClient, folderName string, parentID string) (*types.BoxItem, error) {
+	body := fmt.Sprintf(`{"name":%q,"parent":{"id":%q}}`, folderName, parentID)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/folders", client.APIBaseURL), bytes.NewBufferString(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create folder: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		return nil, client.HandleError("create folder", resp)
+	}
+	var folder types.BoxItem
+	json.NewDecoder(resp.Body).Decode(&folder)
+	return &folder, nil
+}
+
+// MoveItem moves a file or folder to a new parent folder.
+func MoveItem(c *client.BoxClient, itemType string, itemID string, newParentID string) (*types.BoxItem, error) {
+	endpoint := "files"
+	if itemType == "folder" {
+		endpoint = "folders"
+	}
+	body := fmt.Sprintf(`{"parent":{"id":%q}}`, newParentID)
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/%s/%s", client.APIBaseURL, endpoint, itemID), bytes.NewBufferString(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	var item types.BoxItem
+	_, err = c.DoJSON(req, &item)
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+// RenameItem renames a file or folder.
+func RenameItem(c *client.BoxClient, itemType string, itemID string, newName string) (*types.BoxItem, error) {
+	endpoint := "files"
+	if itemType == "folder" {
+		endpoint = "folders"
+	}
+	body := fmt.Sprintf(`{"name":%q}`, newName)
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/%s/%s", client.APIBaseURL, endpoint, itemID), bytes.NewBufferString(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	var item types.BoxItem
+	_, err = c.DoJSON(req, &item)
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+// CopyFile copies a file to a destination folder, optionally with a new name.
+func CopyFile(c *client.BoxClient, fileID string, destFolderID string, newName string) (*types.BoxItem, error) {
+	bodyMap := map[string]interface{}{
+		"parent": map[string]string{"id": destFolderID},
+	}
+	if newName != "" {
+		bodyMap["name"] = newName
+	}
+	bodyBytes, _ := json.Marshal(bodyMap)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/files/%s/copy", client.APIBaseURL, fileID), bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	var item types.BoxItem
+	_, err = c.DoJSON(req, &item)
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+// CopyFolder copies a folder to a destination folder, optionally with a new name.
+func CopyFolder(c *client.BoxClient, folderID string, destFolderID string, newName string) (*types.BoxItem, error) {
+	bodyMap := map[string]interface{}{
+		"parent": map[string]string{"id": destFolderID},
+	}
+	if newName != "" {
+		bodyMap["name"] = newName
+	}
+	bodyBytes, _ := json.Marshal(bodyMap)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/folders/%s/copy", client.APIBaseURL, folderID), bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	var item types.BoxItem
+	_, err = c.DoJSON(req, &item)
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
 // DeleteFolder deletes a folder by ID (recursively).
 func DeleteFolder(c *client.BoxClient, folderID string) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/folders/%s", client.APIBaseURL, folderID), nil)

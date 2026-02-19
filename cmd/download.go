@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/box/internal/api"
+	u "github.com/tanq16/box/internal/utils"
 )
 
 var downloadFileID string
@@ -15,35 +16,38 @@ var downloadFileID string
 var downloadCmd = &cobra.Command{
 	Use:   "download <remote> [local]",
 	Short: "Download a file or folder from Box",
-	Args:  cobra.RangeArgs(1, 2),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		remotePath := args[0]
+	Args:  cobra.RangeArgs(0, 2),
+	Run: func(cmd *cobra.Command, args []string) {
+		var itemID, itemType string
+		var remotePath string
+
+		if downloadFileID != "" {
+			itemID, itemType = resolveItemByID(downloadFileID)
+			if len(args) > 0 {
+				remotePath = args[0]
+			}
+		} else {
+			if len(args) == 0 {
+				u.PrintFatal("Must specify a remote path or --id", nil)
+			}
+			remotePath = args[0]
+			var err error
+			itemID, itemType, err = api.ResolvePath(boxClient, remotePath, "")
+			if err != nil {
+				u.PrintFatal("Failed to resolve path", err)
+			}
+		}
+
+		// Determine local path
 		localPath := ""
-		if len(args) > 1 {
+		if downloadFileID != "" && len(args) >= 1 {
+			localPath = args[0]
+		} else if downloadFileID == "" && len(args) >= 2 {
 			localPath = args[1]
 		}
 
-		var itemID, itemType string
-		var err error
-
-		if downloadFileID != "" {
-			itemID = downloadFileID
-			// Determine type by trying file first
-			info, infoErr := api.GetFileInfo(boxClient, itemID)
-			if infoErr == nil {
-				itemType = info.Type
-			} else {
-				itemType = "file" // default assumption
-			}
-		} else {
-			itemID, itemType, err = api.ResolvePath(boxClient, remotePath, "")
-			if err != nil {
-				return err
-			}
-		}
-
 		if itemType == "folder" {
-			if localPath == "" {
+			if localPath == "" && remotePath != "" {
 				parts := strings.Split(strings.Trim(remotePath, "/"), "/")
 				if len(parts) > 0 {
 					localPath = parts[len(parts)-1]
@@ -51,11 +55,18 @@ var downloadCmd = &cobra.Command{
 					localPath = "downloaded_folder"
 				}
 			}
-			fmt.Fprintf(os.Stderr, "Downloading folder to '%s'...\n", localPath)
-			return api.DownloadFolder(boxClient, itemID, localPath)
+			if localPath == "" {
+				localPath = "downloaded_folder"
+			}
+			u.PrintInfo(fmt.Sprintf("Downloading folder to '%s'...", localPath))
+			if err := api.DownloadFolder(boxClient, itemID, localPath); err != nil {
+				u.PrintFatal("Folder download failed", err)
+			}
+			u.PrintSuccess(fmt.Sprintf("Downloaded to: %s", localPath))
+			return
 		}
 
-		if localPath == "" {
+		if localPath == "" && remotePath != "" {
 			parts := strings.Split(strings.Trim(remotePath, "/"), "/")
 			if len(parts) > 0 {
 				localPath = parts[len(parts)-1]
@@ -63,17 +74,18 @@ var downloadCmd = &cobra.Command{
 		}
 
 		// Ensure parent directory exists
-		if dir := filepath.Dir(localPath); dir != "." {
-			os.MkdirAll(dir, 0755)
+		if localPath != "" {
+			if dir := filepath.Dir(localPath); dir != "." {
+				os.MkdirAll(dir, 0755)
+			}
 		}
 
-		fmt.Fprintf(os.Stderr, "Downloading file...\n")
+		u.PrintInfo("Downloading file...")
 		savedPath, err := api.DownloadFile(boxClient, itemID, localPath)
 		if err != nil {
-			return err
+			u.PrintFatal("Download failed", err)
 		}
-		fmt.Fprintf(os.Stderr, "Downloaded to: %s\n", savedPath)
-		return nil
+		u.PrintSuccess(fmt.Sprintf("Downloaded to: %s", savedPath))
 	},
 }
 

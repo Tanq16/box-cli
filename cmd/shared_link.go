@@ -5,11 +5,11 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/box/internal/api"
+	u "github.com/tanq16/box/internal/utils"
 )
 
 var (
-	slType     string
-	slID       string
+	slItemID   string
 	slAccess   string
 	slPassword string
 )
@@ -20,67 +20,58 @@ var sharedLinkCmd = &cobra.Command{
 }
 
 var slCreateCmd = &cobra.Command{
-	Use:   "create",
+	Use:   "create <path>",
 	Short: "Create a shared link",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if slType == "" || slID == "" {
-			return fmt.Errorf("--type and --id are required")
-		}
-		access := slAccess
-		if access == "" {
-			access = "open"
-		}
-		item, err := api.CreateSharedLink(boxClient, slType, slID, access, slPassword)
+	Args:  cobra.MaximumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		itemID, itemType := resolveItem(args, slItemID)
+		item, err := api.CreateSharedLink(boxClient, itemType, itemID, slAccess, slPassword)
 		if err != nil {
-			return err
+			u.PrintFatal("Failed to create shared link", err)
 		}
 		if item.SharedLink != nil {
-			fmt.Printf("URL:    %s\n", item.SharedLink.URL)
-			fmt.Printf("Access: %s\n", item.SharedLink.Access)
+			u.PrintGeneric(fmt.Sprintf("URL:    %s", item.SharedLink.URL))
+			u.PrintGeneric(fmt.Sprintf("Access: %s", item.SharedLink.Access))
 			if item.SharedLink.IsPasswordEnabled {
-				fmt.Println("Password: enabled")
+				u.PrintGeneric("Password: enabled")
 			}
 		}
-		return nil
+		u.PrintSuccess("Shared link created")
 	},
 }
 
 var slGetCmd = &cobra.Command{
-	Use:   "get",
+	Use:   "get <path>",
 	Short: "Get shared link info for an item",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if slType == "" || slID == "" {
-			return fmt.Errorf("--type and --id are required")
-		}
-		item, err := api.GetSharedLink(boxClient, slType, slID)
+	Args:  cobra.MaximumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		itemID, itemType := resolveItem(args, slItemID)
+		item, err := api.GetSharedLink(boxClient, itemType, itemID)
 		if err != nil {
-			return err
+			u.PrintFatal("Failed to get shared link", err)
 		}
 		if item.SharedLink == nil {
-			fmt.Println("No shared link on this item.")
-			return nil
+			u.PrintInfo("No shared link on this item")
+			return
 		}
-		fmt.Printf("URL:    %s\n", item.SharedLink.URL)
-		fmt.Printf("Access: %s\n", item.SharedLink.Access)
+		u.PrintGeneric(fmt.Sprintf("URL:    %s", item.SharedLink.URL))
+		u.PrintGeneric(fmt.Sprintf("Access: %s", item.SharedLink.Access))
 		if item.SharedLink.IsPasswordEnabled {
-			fmt.Println("Password: enabled")
+			u.PrintGeneric("Password: enabled")
 		}
-		return nil
 	},
 }
 
 var slRemoveCmd = &cobra.Command{
-	Use:   "remove",
+	Use:   "remove <path>",
 	Short: "Remove shared link from an item",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if slType == "" || slID == "" {
-			return fmt.Errorf("--type and --id are required")
+	Args:  cobra.MaximumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		itemID, itemType := resolveItem(args, slItemID)
+		if err := api.RemoveSharedLink(boxClient, itemType, itemID); err != nil {
+			u.PrintFatal("Failed to remove shared link", err)
 		}
-		if err := api.RemoveSharedLink(boxClient, slType, slID); err != nil {
-			return err
-		}
-		fmt.Println("Shared link removed.")
-		return nil
+		u.PrintSuccess("Shared link removed")
 	},
 }
 
@@ -88,31 +79,29 @@ var slResolveCmd = &cobra.Command{
 	Use:   "resolve <url>",
 	Short: "Resolve a shared link URL to get item info",
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		item, err := api.ResolveSharedLink(boxClient, args[0], slPassword)
 		if err != nil {
-			return err
+			u.PrintFatal("Failed to resolve shared link", err)
 		}
-		fmt.Printf("Type: %s\n", item.Type)
-		fmt.Printf("ID:   %s\n", item.ID)
-		fmt.Printf("Name: %s\n", item.Name)
-		return nil
+		u.PrintGeneric(fmt.Sprintf("Type: %s", item.Type))
+		u.PrintGeneric(fmt.Sprintf("ID:   %s", item.ID))
+		u.PrintGeneric(fmt.Sprintf("Name: %s", item.Name))
 	},
 }
 
 func init() {
-	slCreateCmd.Flags().StringVar(&slType, "type", "", "Item type (file or folder)")
-	slCreateCmd.Flags().StringVar(&slID, "id", "", "Item ID")
-	slCreateCmd.Flags().StringVar(&slAccess, "access", "open", "Access level (open, company, collaborators)")
-	slCreateCmd.Flags().StringVar(&slPassword, "password", "", "Password for shared link")
+	// Shared --id flag on create/get/remove (alternative to path)
+	slCreateCmd.Flags().StringVar(&slItemID, "id", "", "Item ID (instead of path)")
+	slGetCmd.Flags().StringVar(&slItemID, "id", "", "Item ID (instead of path)")
+	slRemoveCmd.Flags().StringVar(&slItemID, "id", "", "Item ID (instead of path)")
 
-	slGetCmd.Flags().StringVar(&slType, "type", "", "Item type (file or folder)")
-	slGetCmd.Flags().StringVar(&slID, "id", "", "Item ID")
+	// Create-specific flags
+	slCreateCmd.Flags().StringVarP(&slAccess, "access", "a", "open", "Access level (open, company, collaborators)")
+	slCreateCmd.Flags().StringVarP(&slPassword, "password", "P", "", "Password for shared link")
 
-	slRemoveCmd.Flags().StringVar(&slType, "type", "", "Item type (file or folder)")
-	slRemoveCmd.Flags().StringVar(&slID, "id", "", "Item ID")
-
-	slResolveCmd.Flags().StringVar(&slPassword, "password", "", "Shared link password")
+	// Resolve-specific flag
+	slResolveCmd.Flags().StringVarP(&slPassword, "password", "P", "", "Shared link password")
 
 	sharedLinkCmd.AddCommand(slCreateCmd)
 	sharedLinkCmd.AddCommand(slGetCmd)

@@ -1,0 +1,83 @@
+package cmd
+
+import (
+	"fmt"
+	"path"
+
+	"github.com/spf13/cobra"
+	"github.com/tanq16/box/internal/api"
+	u "github.com/tanq16/box/internal/utils"
+)
+
+var moveCmd = &cobra.Command{
+	Use:   "move <source> <dest>",
+	Short: "Move or rename a file or folder on Box",
+	Long: `Move a file or folder to a new location, or rename it in place.
+
+If dest is an existing folder, the item is moved into it.
+If dest is a path with a new name under an existing parent, the item is moved and renamed.
+If source and dest share the same parent, the item is renamed.`,
+	Args: cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		srcPath := args[0]
+		destPath := args[1]
+
+		// Resolve source
+		srcID, srcType, err := api.ResolvePath(boxClient, srcPath, "")
+		if err != nil {
+			u.PrintFatal("Failed to resolve source path", err)
+		}
+
+		// Try resolving dest as an existing folder (move into it)
+		destID, destType, destErr := api.ResolvePath(boxClient, destPath, "")
+		if destErr == nil && destType == "folder" {
+			// Dest is an existing folder — move source into it
+			item, err := api.MoveItem(boxClient, srcType, srcID, destID)
+			if err != nil {
+				u.PrintFatal("Failed to move item", err)
+			}
+			u.PrintSuccess(fmt.Sprintf("Moved to: %s (ID: %s)", item.Name, item.ID))
+			return
+		}
+
+		// Dest doesn't exist as a folder — treat as parent/newname
+		destParent := path.Dir(destPath)
+		destName := path.Base(destPath)
+
+		destParentID, _, err := api.ResolvePath(boxClient, destParent, "folder")
+		if err != nil {
+			u.PrintFatal("Failed to resolve destination parent", err)
+		}
+
+		// Check if source parent matches dest parent (pure rename)
+		srcParent := path.Dir(srcPath)
+		srcParentID, _, _ := api.ResolvePath(boxClient, srcParent, "folder")
+
+		if srcParentID == destParentID {
+			// Same parent — just rename
+			item, err := api.RenameItem(boxClient, srcType, srcID, destName)
+			if err != nil {
+				u.PrintFatal("Failed to rename item", err)
+			}
+			u.PrintSuccess(fmt.Sprintf("Renamed to: %s (ID: %s)", item.Name, item.ID))
+			return
+		}
+
+		// Different parent — move then rename
+		item, err := api.MoveItem(boxClient, srcType, srcID, destParentID)
+		if err != nil {
+			u.PrintFatal("Failed to move item", err)
+		}
+		if item.Name != destName {
+			item, err = api.RenameItem(boxClient, srcType, srcID, destName)
+			if err != nil {
+				u.PrintFatal("Failed to rename item after move", err)
+			}
+		}
+		u.PrintSuccess(fmt.Sprintf("Moved to: %s (ID: %s)", item.Name, item.ID))
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(moveCmd)
+}

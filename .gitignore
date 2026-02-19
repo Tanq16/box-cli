@@ -1,6 +1,6 @@
 # Binary
 box
-dist/
+box-*
 
 # Generated client (reference only, not part of build)
 box-go-generated/

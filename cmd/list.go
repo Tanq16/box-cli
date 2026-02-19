@@ -1,22 +1,21 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-	"text/tabwriter"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/box/internal/api"
-	"github.com/tanq16/box/internal/utils"
+	u "github.com/tanq16/box/internal/utils"
 )
 
 var listFolderID string
+var listFilter string
 
 var listCmd = &cobra.Command{
 	Use:   "list [path]",
 	Short: "List contents of a Box folder",
 	Args:  cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		var folderID string
 		var err error
 
@@ -29,29 +28,37 @@ var listCmd = &cobra.Command{
 			}
 			folderID, _, err = api.ResolvePath(boxClient, remotePath, "folder")
 			if err != nil {
-				return err
+				u.PrintFatal("Failed to resolve path", err)
 			}
 		}
 
 		folders, files, err := api.ListFolder(boxClient, folderID)
 		if err != nil {
-			return err
+			u.PrintFatal("Failed to list folder", err)
 		}
 
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "TYPE\tID\tNAME\tSIZE\tMODIFIED")
+		filter := strings.ToLower(listFilter)
+
+		headers := []string{"TYPE", "ID", "NAME", "SIZE", "MODIFIED"}
+		var rows [][]string
 		for _, f := range folders {
-			fmt.Fprintf(w, "folder\t%s\t%s\t-\t%s\n", f.ID, f.Name, f.ModifiedTime)
+			if filter != "" && !strings.Contains(strings.ToLower(f.Name), filter) {
+				continue
+			}
+			rows = append(rows, []string{"folder", f.ID, f.Name, "-", f.ModifiedTime})
 		}
 		for _, f := range files {
-			fmt.Fprintf(w, "file\t%s\t%s\t%s\t%s\n", f.ID, f.Name, utils.FormatSize(f.Size), f.ModifiedTime)
+			if filter != "" && !strings.Contains(strings.ToLower(f.Name), filter) {
+				continue
+			}
+			rows = append(rows, []string{"file", f.ID, f.Name, u.FormatSize(f.Size), f.ModifiedTime})
 		}
-		w.Flush()
-		return nil
+		u.PrintTable(headers, rows)
 	},
 }
 
 func init() {
 	listCmd.Flags().StringVar(&listFolderID, "id", "", "List by folder ID instead of path")
+	listCmd.Flags().StringVarP(&listFilter, "filter", "F", "", "Case-insensitive substring filter on item names")
 	rootCmd.AddCommand(listCmd)
 }
