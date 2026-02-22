@@ -1,5 +1,5 @@
 <div align="center">
-  <img src=".github/assets/logo.png" alt="Box Logo" width="200">
+  <img src=".github/assets/logo.svg" alt="Box Logo" width="200">
   <h1>Box</h1>
 
   <a href="https://github.com/tanq16/box/actions/workflows/release.yml"><img alt="Build Workflow" src="https://github.com/tanq16/box/actions/workflows/release.yml/badge.svg"></a>&nbsp;<a href="https://github.com/tanq16/box/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/tanq16/box"></a><br><br>
