@@ -9,19 +9,21 @@ import (
 	u "github.com/tanq16/box/internal/utils"
 )
 
-var infoItemID string
+var infoFlags struct {
+	itemID string
+}
 
 var infoCmd = &cobra.Command{
 	Use:   "info <path>",
 	Short: "Show metadata for a file or folder on Box",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		itemID, itemType := resolveItem(args, infoItemID)
+		itemID, itemType := resolveItem(args, infoFlags.itemID)
 
 		if itemType == "folder" {
 			info, err := api.GetFolderInfo(boxClient, itemID)
 			if err != nil {
-				u.PrintFatal("Failed to get folder info", err)
+				u.PrintFatal("cmd","Failed to get folder info", err)
 			}
 			u.PrintGeneric(fmt.Sprintf("Type:     %s", info.Type))
 			u.PrintGeneric(fmt.Sprintf("ID:       %s", info.ID))
@@ -43,7 +45,7 @@ var infoCmd = &cobra.Command{
 		} else {
 			info, err := api.GetFileInfo(boxClient, itemID)
 			if err != nil {
-				u.PrintFatal("Failed to get file info", err)
+				u.PrintFatal("cmd","Failed to get file info", err)
 			}
 			u.PrintGeneric(fmt.Sprintf("Type:     %s", info.Type))
 			u.PrintGeneric(fmt.Sprintf("ID:       %s", info.ID))
@@ -67,6 +69,6 @@ var infoCmd = &cobra.Command{
 }
 
 func init() {
-	infoCmd.Flags().StringVar(&infoItemID, "id", "", "Get info by item ID instead of path")
+	infoCmd.Flags().StringVar(&infoFlags.itemID, "id", "", "Get info by item ID instead of path")
 	rootCmd.AddCommand(infoCmd)
 }

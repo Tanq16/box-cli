@@ -12,18 +12,18 @@ import (
 	u "github.com/tanq16/box/internal/utils"
 )
 
-var (
-	searchType       string
-	searchExtensions string
-	searchFolderID   string
-	searchCreatedIn  string
-	searchUpdatedIn  string
-	searchSizeMin    int64
-	searchSizeMax    int64
-	searchOwner      string
-	searchSort       string
-	searchLimit      int
-)
+var searchFlags struct {
+	itemType   string
+	extensions string
+	folderID   string
+	createdIn  string
+	updatedIn  string
+	sizeMin    int64
+	sizeMax    int64
+	owner      string
+	sort       string
+	limit      int
+}
 
 // parseRelativeTime parses a shorthand like "2h", "3d", "1w", "2M", "1y"
 // and returns the RFC3339 timestamp for that duration ago from now.
@@ -77,41 +77,41 @@ var searchCmd = &cobra.Command{
 		query := args[0]
 
 		var exts []string
-		if searchExtensions != "" {
-			exts = strings.Split(searchExtensions, ",")
+		if searchFlags.extensions != "" {
+			exts = strings.Split(searchFlags.extensions, ",")
 		}
 
-		createdAfter, err := parseRelativeTime(searchCreatedIn)
+		createdAfter, err := parseRelativeTime(searchFlags.createdIn)
 		if err != nil {
-			u.PrintFatal("Invalid --created-in value", err)
+			u.PrintFatal("cmd","Invalid --created-in value", err)
 		}
 
-		updatedAfter, err := parseRelativeTime(searchUpdatedIn)
+		updatedAfter, err := parseRelativeTime(searchFlags.updatedIn)
 		if err != nil {
-			u.PrintFatal("Invalid --updated-in value", err)
+			u.PrintFatal("cmd","Invalid --updated-in value", err)
 		}
 
 		opts := types.SearchOptions{
 			Query:        query,
-			Type:         searchType,
+			Type:         searchFlags.itemType,
 			Extensions:   exts,
-			FolderID:     searchFolderID,
+			FolderID:     searchFlags.folderID,
 			CreatedAfter: createdAfter,
 			UpdatedAfter: updatedAfter,
-			SizeMin:      searchSizeMin,
-			SizeMax:      searchSizeMax,
-			Owner:        searchOwner,
-			Sort:         searchSort,
-			Limit:        searchLimit,
+			SizeMin:      searchFlags.sizeMin,
+			SizeMax:      searchFlags.sizeMax,
+			Owner:        searchFlags.owner,
+			Sort:         searchFlags.sort,
+			Limit:        searchFlags.limit,
 		}
 
 		results, err := api.Search(boxClient, opts)
 		if err != nil {
-			u.PrintFatal("Search failed", err)
+			u.PrintFatal("cmd","Search failed", err)
 		}
 
 		if len(results.Entries) == 0 {
-			u.PrintInfo("No results found")
+			u.PrintInfo("cmd","No results found")
 			return
 		}
 
@@ -125,20 +125,20 @@ var searchCmd = &cobra.Command{
 			rows = append(rows, []string{item.Type, item.ID, item.Name, size})
 		}
 		u.PrintTable(headers, rows)
-		u.PrintInfo(fmt.Sprintf("%d results (of %d total)", len(results.Entries), results.TotalCount))
+		u.PrintInfo("cmd",fmt.Sprintf("%d results (of %d total)", len(results.Entries), results.TotalCount))
 	},
 }
 
 func init() {
-	searchCmd.Flags().StringVar(&searchType, "type", "", "Filter by type (file, folder, web_link)")
-	searchCmd.Flags().StringVar(&searchExtensions, "extensions", "", "Comma-separated file extensions")
-	searchCmd.Flags().StringVar(&searchFolderID, "folder-id", "", "Search within folder ID")
-	searchCmd.Flags().StringVar(&searchCreatedIn, "created-in", "", "Created within relative time (e.g. 2h, 3d, 1w, 2M, 1y)")
-	searchCmd.Flags().StringVar(&searchUpdatedIn, "updated-in", "", "Updated within relative time (e.g. 2h, 3d, 1w, 2M, 1y)")
-	searchCmd.Flags().Int64Var(&searchSizeMin, "size-min", 0, "Minimum file size in bytes")
-	searchCmd.Flags().Int64Var(&searchSizeMax, "size-max", 0, "Maximum file size in bytes")
-	searchCmd.Flags().StringVar(&searchOwner, "owner", "", "Owner user ID")
-	searchCmd.Flags().StringVar(&searchSort, "sort", "", "Sort by (modified_at or relevance)")
-	searchCmd.Flags().IntVar(&searchLimit, "limit", 30, "Maximum number of results")
+	searchCmd.Flags().StringVar(&searchFlags.itemType, "type", "", "Filter by type (file, folder, web_link)")
+	searchCmd.Flags().StringVar(&searchFlags.extensions, "extensions", "", "Comma-separated file extensions")
+	searchCmd.Flags().StringVar(&searchFlags.folderID, "folder-id", "", "Search within folder ID")
+	searchCmd.Flags().StringVar(&searchFlags.createdIn, "created-in", "", "Created within relative time (e.g. 2h, 3d, 1w, 2M, 1y)")
+	searchCmd.Flags().StringVar(&searchFlags.updatedIn, "updated-in", "", "Updated within relative time (e.g. 2h, 3d, 1w, 2M, 1y)")
+	searchCmd.Flags().Int64Var(&searchFlags.sizeMin, "size-min", 0, "Minimum file size in bytes")
+	searchCmd.Flags().Int64Var(&searchFlags.sizeMax, "size-max", 0, "Maximum file size in bytes")
+	searchCmd.Flags().StringVar(&searchFlags.owner, "owner", "", "Owner user ID")
+	searchCmd.Flags().StringVar(&searchFlags.sort, "sort", "", "Sort by (modified_at or relevance)")
+	searchCmd.Flags().IntVar(&searchFlags.limit, "limit", 30, "Maximum number of results")
 	rootCmd.AddCommand(searchCmd)
 }

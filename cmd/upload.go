@@ -9,7 +9,9 @@ import (
 	u "github.com/tanq16/box/internal/utils"
 )
 
-var uploadChunked bool
+var uploadFlags struct {
+	chunked bool
+}
 
 var uploadCmd = &cobra.Command{
 	Use:   "upload <local> [remote]",
@@ -24,43 +26,43 @@ var uploadCmd = &cobra.Command{
 
 		info, err := os.Stat(localPath)
 		if err != nil {
-			u.PrintFatal(fmt.Sprintf("Cannot access '%s'", localPath), err)
+			u.PrintFatal("cmd",fmt.Sprintf("Cannot access '%s'", localPath), err)
 		}
 
 		parentFolderID, _, err := api.ResolvePath(boxClient, remotePath, "folder")
 		if err != nil {
-			u.PrintFatal(fmt.Sprintf("Failed to resolve remote path '%s'", remotePath), err)
+			u.PrintFatal("cmd",fmt.Sprintf("Failed to resolve remote path '%s'", remotePath), err)
 		}
 
 		if info.IsDir() {
-			u.PrintInfo(fmt.Sprintf("Uploading folder '%s' to '%s'...", localPath, remotePath))
+			u.PrintInfo("cmd",fmt.Sprintf("Uploading folder '%s' to '%s'...", localPath, remotePath))
 			if err := api.UploadFolder(boxClient, localPath, parentFolderID); err != nil {
-				u.PrintFatal("Folder upload failed", err)
+				u.PrintFatal("cmd","Folder upload failed", err)
 			}
-			u.PrintSuccess("Folder upload complete")
+			u.PrintSuccess("cmd","Folder upload complete")
 			return
 		}
 
 		// Check if chunked upload should be used
 		const chunkedThreshold = 50 * 1024 * 1024 // 50MB
-		if uploadChunked || info.Size() > chunkedThreshold {
-			u.PrintInfo(fmt.Sprintf("Uploading '%s' via chunked upload (%s)...", localPath, u.FormatSize(info.Size())))
+		if uploadFlags.chunked || info.Size() > chunkedThreshold {
+			u.PrintInfo("cmd",fmt.Sprintf("Uploading '%s' via chunked upload (%s)...", localPath, u.FormatSize(info.Size())))
 			if err := api.UploadFileChunked(boxClient, localPath, parentFolderID); err != nil {
-				u.PrintFatal("Chunked upload failed", err)
+				u.PrintFatal("cmd","Chunked upload failed", err)
 			}
-			u.PrintSuccess("Upload complete")
+			u.PrintSuccess("cmd","Upload complete")
 			return
 		}
 
-		u.PrintInfo(fmt.Sprintf("Uploading '%s' to '%s'...", localPath, remotePath))
+		u.PrintInfo("cmd",fmt.Sprintf("Uploading '%s' to '%s'...", localPath, remotePath))
 		if err := api.UploadFile(boxClient, localPath, parentFolderID); err != nil {
-			u.PrintFatal("Upload failed", err)
+			u.PrintFatal("cmd","Upload failed", err)
 		}
-		u.PrintSuccess("Upload complete")
+		u.PrintSuccess("cmd","Upload complete")
 	},
 }
 
 func init() {
-	uploadCmd.Flags().BoolVar(&uploadChunked, "chunked", false, "Force chunked upload")
+	uploadCmd.Flags().BoolVar(&uploadFlags.chunked, "chunked", false, "Force chunked upload")
 	rootCmd.AddCommand(uploadCmd)
 }

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
@@ -10,10 +11,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/tanq16/box/internal/client"
 	"github.com/tanq16/box/internal/types"
+	"golang.org/x/sync/errgroup"
 )
 
 func computeLocalHash(filePath string) (string, error) {
@@ -162,7 +163,7 @@ func BuildRemoteTree(c *client.BoxClient, folderID string, basePath string, igno
 }
 
 // SyncPush syncs local→remote: local is truth.
-func SyncPush(c *client.BoxClient, localDir string, remotePath string, concurrency int, ignore []string) error {
+func SyncPush(ctx context.Context, c *client.BoxClient, localDir string, remotePath string, concurrency int, ignore []string) error {
 	ignoreSet := makeIgnoreSet(ignore)
 
 	localTree, err := BuildLocalTree(localDir, ignoreSet)
@@ -180,70 +181,73 @@ func SyncPush(c *client.BoxClient, localDir string, remotePath string, concurren
 		return fmt.Errorf("failed to build remote tree: %w", err)
 	}
 
-	sem := make(chan struct{}, concurrency)
-	var wg sync.WaitGroup
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(concurrency)
 
-	syncPushTree(c, localTree, remoteTree, localDir, folderID, sem, &wg)
-	wg.Wait()
-	return nil
+	syncPushTree(ctx, g, c, localTree, remoteTree, localDir, folderID)
+	return g.Wait()
 }
 
-func syncPushTree(c *client.BoxClient, local *types.FileTree, remote *types.FileTree, localDir string, remoteFolderID string, sem chan struct{}, wg *sync.WaitGroup) {
+func syncPushTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, local *types.FileTree, remote *types.FileTree, localDir string, remoteFolderID string) {
 	// Upload new/changed files
 	for name, localFile := range local.Files {
 		remoteFile, exists := remote.Files[name]
 		if !exists || remoteFile.Hash != localFile.Hash {
-			wg.Add(1)
-			go func(name string, localFile types.FileInfo, remoteFile types.FileInfo, exists bool) {
-				defer wg.Done()
-				sem <- struct{}{}
-				defer func() { <-sem }()
-
+			name := name
+			remoteFile := remoteFile
+			exists := exists
+			g.Go(func() error {
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
 				localPath := filepath.Join(localDir, name)
 				if exists && remoteFile.ID != "" {
-					// Update existing file
 					if err := UploadFileVersion(c, localPath, remoteFile.ID); err != nil {
 						fmt.Fprintf(os.Stderr, "Error updating '%s': %v\n", name, err)
 					} else {
 						fmt.Fprintf(os.Stderr, "Updated: %s\n", name)
 					}
 				} else {
-					// Upload new file
 					if err := UploadFile(c, localPath, remoteFolderID); err != nil {
 						fmt.Fprintf(os.Stderr, "Error uploading '%s': %v\n", name, err)
 					} else {
 						fmt.Fprintf(os.Stderr, "Uploaded: %s\n", name)
 					}
 				}
-			}(name, localFile, remoteFile, exists)
+				return nil
+			})
 		}
 	}
 
 	// Delete remote-only files
 	for name, remoteFile := range remote.Files {
 		if _, exists := local.Files[name]; !exists {
-			wg.Add(1)
-			go func(name string, remoteFile types.FileInfo) {
-				defer wg.Done()
-				sem <- struct{}{}
-				defer func() { <-sem }()
+			name := name
+			remoteFile := remoteFile
+			g.Go(func() error {
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
 				if err := DeleteFile(c, remoteFile.ID); err != nil {
 					fmt.Fprintf(os.Stderr, "Error deleting remote file '%s': %v\n", name, err)
 				} else {
 					fmt.Fprintf(os.Stderr, "Deleted remote: %s\n", name)
 				}
-			}(name, remoteFile)
+				return nil
+			})
 		}
 	}
 
 	// Recurse into subdirectories
 	for name, localSubTree := range local.Dirs {
+		if ctx.Err() != nil {
+			return
+		}
 		remoteSubTree, exists := remote.Dirs[name]
 		subLocalDir := filepath.Join(localDir, name)
 
 		var subFolderID string
 		if !exists {
-			// Create remote folder
 			id, err := FindOrCreateFolder(c, name, remoteFolderID)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error creating folder '%s': %v\n", name, err)
@@ -256,11 +260,10 @@ func syncPushTree(c *client.BoxClient, local *types.FileTree, remote *types.File
 			}
 			fmt.Fprintf(os.Stderr, "Created folder: %s\n", name)
 		} else {
-			// Look up folder ID from items
 			subFolderID = getFolderIDFromRemote(c, remoteFolderID, name)
 		}
 
-		syncPushTree(c, localSubTree, remoteSubTree, subLocalDir, subFolderID, sem, wg)
+		syncPushTree(ctx, g, c, localSubTree, remoteSubTree, subLocalDir, subFolderID)
 	}
 
 	// Delete remote-only folders
@@ -279,7 +282,7 @@ func syncPushTree(c *client.BoxClient, local *types.FileTree, remote *types.File
 }
 
 // SyncPull syncs remote→local: remote is truth.
-func SyncPull(c *client.BoxClient, remotePath string, localDir string, concurrency int, ignore []string) error {
+func SyncPull(ctx context.Context, c *client.BoxClient, remotePath string, localDir string, concurrency int, ignore []string) error {
 	ignoreSet := makeIgnoreSet(ignore)
 
 	folderID, err := ResolveRemoteFolderID(c, remotePath, "")
@@ -302,34 +305,34 @@ func SyncPull(c *client.BoxClient, remotePath string, localDir string, concurren
 		}
 	}
 
-	sem := make(chan struct{}, concurrency)
-	var wg sync.WaitGroup
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(concurrency)
 
-	syncPullTree(c, remoteTree, localTree, localDir, folderID, sem, &wg)
-	wg.Wait()
-	return nil
+	syncPullTree(ctx, g, c, remoteTree, localTree, localDir, folderID)
+	return g.Wait()
 }
 
-func syncPullTree(c *client.BoxClient, remote *types.FileTree, local *types.FileTree, localDir string, remoteFolderID string, sem chan struct{}, wg *sync.WaitGroup) {
+func syncPullTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, remote *types.FileTree, local *types.FileTree, localDir string, remoteFolderID string) {
 	os.MkdirAll(localDir, 0755)
 
 	// Download new/changed files
 	for name, remoteFile := range remote.Files {
 		localFile, exists := local.Files[name]
 		if !exists || localFile.Hash != remoteFile.Hash {
-			wg.Add(1)
-			go func(name string, remoteFile types.FileInfo) {
-				defer wg.Done()
-				sem <- struct{}{}
-				defer func() { <-sem }()
-
+			name := name
+			remoteFile := remoteFile
+			g.Go(func() error {
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
 				localPath := filepath.Join(localDir, name)
 				if _, err := DownloadFile(c, remoteFile.ID, localPath); err != nil {
 					fmt.Fprintf(os.Stderr, "Error downloading '%s': %v\n", name, err)
 				} else {
 					fmt.Fprintf(os.Stderr, "Downloaded: %s\n", name)
 				}
-			}(name, remoteFile)
+				return nil
+			})
 		}
 	}
 
@@ -347,6 +350,9 @@ func syncPullTree(c *client.BoxClient, remote *types.FileTree, local *types.File
 
 	// Recurse into subdirectories
 	for name, remoteSubTree := range remote.Dirs {
+		if ctx.Err() != nil {
+			return
+		}
 		localSubTree, exists := local.Dirs[name]
 		subLocalDir := filepath.Join(localDir, name)
 		subFolderID := getFolderIDFromRemote(c, remoteFolderID, name)
@@ -358,7 +364,7 @@ func syncPullTree(c *client.BoxClient, remote *types.FileTree, local *types.File
 			}
 		}
 
-		syncPullTree(c, remoteSubTree, localSubTree, subLocalDir, subFolderID, sem, wg)
+		syncPullTree(ctx, g, c, remoteSubTree, localSubTree, subLocalDir, subFolderID)
 	}
 
 	// Delete local-only folders

@@ -11,9 +11,9 @@ var loginCmd = &cobra.Command{
 	Short: "Authenticate with Box.com via OAuth",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := auth.Login(); err != nil {
-			u.PrintFatal("Authentication failed", err)
+			u.PrintFatal("cmd","Authentication failed", err)
 		}
-		u.PrintSuccess("Authentication complete")
+		u.PrintSuccess("cmd","Authentication complete")
 	},
 }
 

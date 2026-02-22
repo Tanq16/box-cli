@@ -8,15 +8,15 @@ import (
 var (
 	headerStyle = lipgloss.NewStyle().
 		Bold(true).
-		Foreground(lipgloss.Color("#cdd6f4")).
+		Foreground(lipgloss.Color("15")).
 		Padding(0, 1)
 
 	cellStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#cdd6f4")).
+		Foreground(lipgloss.Color("15")).
 		Padding(0, 1)
 
 	borderStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#6c7086"))
+		Foreground(lipgloss.Color("8"))
 )
 
 // PrintTable prints a formatted table with headers and rows

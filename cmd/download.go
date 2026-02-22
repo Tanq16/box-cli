@@ -11,7 +11,9 @@ import (
 	u "github.com/tanq16/box/internal/utils"
 )
 
-var downloadFileID string
+var downloadFlags struct {
+	fileID string
+}
 
 var downloadCmd = &cobra.Command{
 	Use:   "download <remote> [local]",
@@ -21,28 +23,28 @@ var downloadCmd = &cobra.Command{
 		var itemID, itemType string
 		var remotePath string
 
-		if downloadFileID != "" {
-			itemID, itemType = resolveItemByID(downloadFileID)
+		if downloadFlags.fileID != "" {
+			itemID, itemType = resolveItemByID(downloadFlags.fileID)
 			if len(args) > 0 {
 				remotePath = args[0]
 			}
 		} else {
 			if len(args) == 0 {
-				u.PrintFatal("Must specify a remote path or --id", nil)
+				u.PrintFatal("cmd","Must specify a remote path or --id", nil)
 			}
 			remotePath = args[0]
 			var err error
 			itemID, itemType, err = api.ResolvePath(boxClient, remotePath, "")
 			if err != nil {
-				u.PrintFatal("Failed to resolve path", err)
+				u.PrintFatal("cmd","Failed to resolve path", err)
 			}
 		}
 
 		// Determine local path
 		localPath := ""
-		if downloadFileID != "" && len(args) >= 1 {
+		if downloadFlags.fileID != "" && len(args) >= 1 {
 			localPath = args[0]
-		} else if downloadFileID == "" && len(args) >= 2 {
+		} else if downloadFlags.fileID == "" && len(args) >= 2 {
 			localPath = args[1]
 		}
 
@@ -58,11 +60,11 @@ var downloadCmd = &cobra.Command{
 			if localPath == "" {
 				localPath = "downloaded_folder"
 			}
-			u.PrintInfo(fmt.Sprintf("Downloading folder to '%s'...", localPath))
+			u.PrintInfo("cmd",fmt.Sprintf("Downloading folder to '%s'...", localPath))
 			if err := api.DownloadFolder(boxClient, itemID, localPath); err != nil {
-				u.PrintFatal("Folder download failed", err)
+				u.PrintFatal("cmd","Folder download failed", err)
 			}
-			u.PrintSuccess(fmt.Sprintf("Downloaded to: %s", localPath))
+			u.PrintSuccess("cmd",fmt.Sprintf("Downloaded to: %s", localPath))
 			return
 		}
 
@@ -80,16 +82,16 @@ var downloadCmd = &cobra.Command{
 			}
 		}
 
-		u.PrintInfo("Downloading file...")
+		u.PrintInfo("cmd","Downloading file...")
 		savedPath, err := api.DownloadFile(boxClient, itemID, localPath)
 		if err != nil {
-			u.PrintFatal("Download failed", err)
+			u.PrintFatal("cmd","Download failed", err)
 		}
-		u.PrintSuccess(fmt.Sprintf("Downloaded to: %s", savedPath))
+		u.PrintSuccess("cmd",fmt.Sprintf("Downloaded to: %s", savedPath))
 	},
 }
 
 func init() {
-	downloadCmd.Flags().StringVar(&downloadFileID, "id", "", "Download by file/folder ID instead of path")
+	downloadCmd.Flags().StringVar(&downloadFlags.fileID, "id", "", "Download by file/folder ID instead of path")
 	rootCmd.AddCommand(downloadCmd)
 }

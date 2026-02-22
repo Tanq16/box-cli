@@ -8,8 +8,10 @@ import (
 	u "github.com/tanq16/box/internal/utils"
 )
 
-var listFolderID string
-var listFilter string
+var listFlags struct {
+	folderID string
+	filter   string
+}
 
 var listCmd = &cobra.Command{
 	Use:   "list [path]",
@@ -19,8 +21,8 @@ var listCmd = &cobra.Command{
 		var folderID string
 		var err error
 
-		if listFolderID != "" {
-			folderID = listFolderID
+		if listFlags.folderID != "" {
+			folderID = listFlags.folderID
 		} else {
 			remotePath := "/"
 			if len(args) > 0 {
@@ -28,16 +30,16 @@ var listCmd = &cobra.Command{
 			}
 			folderID, _, err = api.ResolvePath(boxClient, remotePath, "folder")
 			if err != nil {
-				u.PrintFatal("Failed to resolve path", err)
+				u.PrintFatal("cmd","Failed to resolve path", err)
 			}
 		}
 
 		folders, files, err := api.ListFolder(boxClient, folderID)
 		if err != nil {
-			u.PrintFatal("Failed to list folder", err)
+			u.PrintFatal("cmd","Failed to list folder", err)
 		}
 
-		filter := strings.ToLower(listFilter)
+		filter := strings.ToLower(listFlags.filter)
 
 		headers := []string{"TYPE", "ID", "NAME", "SIZE", "MODIFIED"}
 		var rows [][]string
@@ -58,7 +60,7 @@ var listCmd = &cobra.Command{
 }
 
 func init() {
-	listCmd.Flags().StringVar(&listFolderID, "id", "", "List by folder ID instead of path")
-	listCmd.Flags().StringVarP(&listFilter, "filter", "F", "", "Case-insensitive substring filter on item names")
+	listCmd.Flags().StringVar(&listFlags.folderID, "id", "", "List by folder ID instead of path")
+	listCmd.Flags().StringVarP(&listFlags.filter, "filter", "F", "", "Case-insensitive substring filter on item names")
 	rootCmd.AddCommand(listCmd)
 }

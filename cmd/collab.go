@@ -9,14 +9,17 @@ import (
 	u "github.com/tanq16/box/internal/utils"
 )
 
-var (
-	collabCreateID      string
-	collabCreateRole    string
-	collabCreateUserID  string
-	collabCreateGroupID string
-	collabUpdateRole    string
-	collabUpdateStatus  string
-)
+var collabCreateFlags struct {
+	id      string
+	role    string
+	userID  string
+	groupID string
+}
+
+var collabUpdateFlags struct {
+	role   string
+	status string
+}
 
 var collabCmd = &cobra.Command{
 	Use:   "collab",
@@ -37,38 +40,38 @@ For advanced cases, use --user-id or --group-id instead of a positional email.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var itemID, itemType string
 
-		if collabCreateID != "" {
-			itemID, itemType = resolveItemByID(collabCreateID)
+		if collabCreateFlags.id != "" {
+			itemID, itemType = resolveItemByID(collabCreateFlags.id)
 			// When using --id, email is the first positional arg
-			if len(args) < 1 && collabCreateUserID == "" && collabCreateGroupID == "" {
-				u.PrintFatal("Must specify an email, --user-id, or --group-id", nil)
+			if len(args) < 1 && collabCreateFlags.userID == "" && collabCreateFlags.groupID == "" {
+				u.PrintFatal("cmd","Must specify an email, --user-id, or --group-id", nil)
 			}
 		} else {
 			if len(args) < 1 {
-				u.PrintFatal("Must specify a path (or use --id)", nil)
+				u.PrintFatal("cmd","Must specify a path (or use --id)", nil)
 			}
 			itemID, itemType = resolveItem(args[:1], "")
 
 			// Email is second positional arg when using path
-			if len(args) < 2 && collabCreateUserID == "" && collabCreateGroupID == "" {
-				u.PrintFatal("Must specify an email, --user-id, or --group-id", nil)
+			if len(args) < 2 && collabCreateFlags.userID == "" && collabCreateFlags.groupID == "" {
+				u.PrintFatal("cmd","Must specify an email, --user-id, or --group-id", nil)
 			}
 		}
 
 		// Determine the email from positional args
 		var email string
-		if collabCreateID != "" && len(args) >= 1 {
+		if collabCreateFlags.id != "" && len(args) >= 1 {
 			email = args[0]
-		} else if collabCreateID == "" && len(args) >= 2 {
+		} else if collabCreateFlags.id == "" && len(args) >= 2 {
 			email = args[1]
 		}
 
-		collab, err := api.CreateCollaboration(boxClient, itemType, itemID, collabCreateRole, email, collabCreateUserID, collabCreateGroupID)
+		collab, err := api.CreateCollaboration(boxClient, itemType, itemID, collabCreateFlags.role, email, collabCreateFlags.userID, collabCreateFlags.groupID)
 		if err != nil {
-			u.PrintFatal("Failed to create collaboration", err)
+			u.PrintFatal("cmd","Failed to create collaboration", err)
 		}
 		printCollab(collab)
-		u.PrintSuccess("Collaboration created")
+		u.PrintSuccess("cmd","Collaboration created")
 	},
 }
 
@@ -79,7 +82,7 @@ var collabGetCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		collab, err := api.GetCollaboration(boxClient, args[0])
 		if err != nil {
-			u.PrintFatal("Failed to get collaboration", err)
+			u.PrintFatal("cmd","Failed to get collaboration", err)
 		}
 		printCollab(collab)
 	},
@@ -90,12 +93,12 @@ var collabUpdateCmd = &cobra.Command{
 	Short: "Update a collaboration",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		collab, err := api.UpdateCollaboration(boxClient, args[0], collabUpdateRole, collabUpdateStatus)
+		collab, err := api.UpdateCollaboration(boxClient, args[0], collabUpdateFlags.role, collabUpdateFlags.status)
 		if err != nil {
-			u.PrintFatal("Failed to update collaboration", err)
+			u.PrintFatal("cmd","Failed to update collaboration", err)
 		}
 		printCollab(collab)
-		u.PrintSuccess("Collaboration updated")
+		u.PrintSuccess("cmd","Collaboration updated")
 	},
 }
 
@@ -105,9 +108,9 @@ var collabDeleteCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := api.DeleteCollaboration(boxClient, args[0]); err != nil {
-			u.PrintFatal("Failed to delete collaboration", err)
+			u.PrintFatal("cmd","Failed to delete collaboration", err)
 		}
-		u.PrintSuccess("Collaboration deleted")
+		u.PrintSuccess("cmd","Collaboration deleted")
 	},
 }
 
@@ -117,10 +120,10 @@ var collabPendingCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		list, err := api.ListPendingCollaborations(boxClient)
 		if err != nil {
-			u.PrintFatal("Failed to list pending collaborations", err)
+			u.PrintFatal("cmd","Failed to list pending collaborations", err)
 		}
 		if len(list.Entries) == 0 {
-			u.PrintInfo("No pending collaborations")
+			u.PrintInfo("cmd","No pending collaborations")
 			return
 		}
 
@@ -157,13 +160,13 @@ func printCollab(c *types.Collaboration) {
 }
 
 func init() {
-	collabCreateCmd.Flags().StringVar(&collabCreateID, "id", "", "Item ID (instead of path)")
-	collabCreateCmd.Flags().StringVarP(&collabCreateRole, "role", "r", "viewer", "Permission role (viewer, editor, co-owner, etc.)")
-	collabCreateCmd.Flags().StringVar(&collabCreateUserID, "user-id", "", "User ID (instead of email)")
-	collabCreateCmd.Flags().StringVar(&collabCreateGroupID, "group-id", "", "Group ID (instead of email)")
+	collabCreateCmd.Flags().StringVar(&collabCreateFlags.id, "id", "", "Item ID (instead of path)")
+	collabCreateCmd.Flags().StringVarP(&collabCreateFlags.role, "role", "r", "viewer", "Permission role (viewer, editor, co-owner, etc.)")
+	collabCreateCmd.Flags().StringVar(&collabCreateFlags.userID, "user-id", "", "User ID (instead of email)")
+	collabCreateCmd.Flags().StringVar(&collabCreateFlags.groupID, "group-id", "", "Group ID (instead of email)")
 
-	collabUpdateCmd.Flags().StringVarP(&collabUpdateRole, "role", "r", "", "New role")
-	collabUpdateCmd.Flags().StringVarP(&collabUpdateStatus, "status", "s", "", "New status (accepted, rejected)")
+	collabUpdateCmd.Flags().StringVarP(&collabUpdateFlags.role, "role", "r", "", "New role")
+	collabUpdateCmd.Flags().StringVarP(&collabUpdateFlags.status, "status", "s", "", "New status (accepted, rejected)")
 
 	collabCmd.AddCommand(collabCreateCmd)
 	collabCmd.AddCommand(collabGetCmd)
