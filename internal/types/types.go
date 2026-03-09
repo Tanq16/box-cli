@@ -46,7 +46,6 @@ type BoxItemDisplay struct {
 	Type         string
 }
 
-// Upload session types for chunked upload
 type UploadSession struct {
 	ID                string                  `json:"id"`
 	Type              string                  `json:"type"`
@@ -76,7 +75,6 @@ type UploadPartResponse struct {
 	Part UploadPart `json:"part"`
 }
 
-// Sync types
 type FileTree struct {
 	Files map[string]FileInfo
 	Dirs  map[string]*FileTree
@@ -88,7 +86,6 @@ type FileInfo struct {
 	ID   string
 }
 
-// Index types
 type IndexItem struct {
 	ID           string `json:"id"`
 	Name         string `json:"name"`
@@ -105,7 +102,6 @@ type IndexStore struct {
 	Items     []IndexItem `json:"items"`
 }
 
-// Collaboration types
 type Collaboration struct {
 	ID           string           `json:"id"`
 	Type         string           `json:"type"`
@@ -140,7 +136,6 @@ type CollaborationList struct {
 	Limit      int             `json:"limit"`
 }
 
-// Search types
 type SearchResults struct {
 	TotalCount int       `json:"total_count"`
 	Entries    []BoxItem `json:"entries"`
@@ -164,7 +159,6 @@ type SearchOptions struct {
 	Limit        int
 }
 
-// Shared link types
 type BoxSharedLink struct {
 	URL               string              `json:"url,omitempty"`
 	DownloadURL       string              `json:"download_url,omitempty"`
@@ -186,7 +180,6 @@ type SharedLinkPerms struct {
 	CanEdit     bool `json:"can_edit"`
 }
 
-// Upload response wrapper
 type BoxFileList struct {
 	TotalCount int       `json:"total_count"`
 	Entries    []BoxItem `json:"entries"`

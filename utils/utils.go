@@ -2,7 +2,6 @@ package utils
 
 import "fmt"
 
-// FormatSize returns a human-readable file size string.
 func FormatSize(bytes int64) string {
 	if bytes == 0 {
 		return "0 B"

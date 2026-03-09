@@ -9,7 +9,6 @@ import (
 	"github.com/tanq16/box/internal/types"
 )
 
-// Search performs a server-side search on Box.
 func Search(c *client.BoxClient, opts types.SearchOptions) (*types.SearchResults, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/search", client.APIBaseURL), nil)
 	if err != nil {

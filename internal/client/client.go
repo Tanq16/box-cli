@@ -17,17 +17,14 @@ const (
 	maxRetries    = 3
 )
 
-// BoxClient wraps an authenticated http.Client with retry and error handling.
 type BoxClient struct {
 	HTTP *http.Client
 }
 
-// New creates a BoxClient from an authenticated http.Client.
 func New(httpClient *http.Client) *BoxClient {
 	return &BoxClient{HTTP: httpClient}
 }
 
-// Do executes an HTTP request with automatic 429 rate-limit retry.
 func (c *BoxClient) Do(req *http.Request) (*http.Response, error) {
 	var resp *http.Response
 	var err error
@@ -40,7 +37,6 @@ func (c *BoxClient) Do(req *http.Request) (*http.Response, error) {
 		if resp.StatusCode != http.StatusTooManyRequests {
 			return resp, nil
 		}
-		// Rate limited — read Retry-After header
 		retryAfter := resp.Header.Get("Retry-After")
 		resp.Body.Close()
 
@@ -58,7 +54,6 @@ func (c *BoxClient) Do(req *http.Request) (*http.Response, error) {
 	return resp, nil
 }
 
-// DoJSON executes a request and decodes the JSON response into target.
 func (c *BoxClient) DoJSON(req *http.Request, target interface{}) (*http.Response, error) {
 	resp, err := c.Do(req)
 	if err != nil {
@@ -78,7 +73,6 @@ func (c *BoxClient) DoJSON(req *http.Request, target interface{}) (*http.Respons
 	return resp, nil
 }
 
-// HandleError parses a Box API error response and returns a formatted error.
 func HandleError(action string, resp *http.Response) error {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

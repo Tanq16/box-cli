@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/box/internal/api"
-	u "github.com/tanq16/box/internal/utils"
+	u "github.com/tanq16/box/utils"
 )
 
 var copyFlags struct {
@@ -26,19 +26,15 @@ the item is copied there with that name.`,
 		srcPath := args[0]
 		destPath := args[1]
 
-		// Resolve source
 		srcID, srcType, err := api.ResolvePath(boxClient, srcPath, "")
 		if err != nil {
 			u.PrintFatal("cmd","Failed to resolve source path", err)
 		}
 
-		// Determine destination folder and optional name
 		name := copyFlags.name
 
-		// Try resolving dest as an existing folder
 		destID, destType, destErr := api.ResolvePath(boxClient, destPath, "")
 		if destErr == nil && destType == "folder" {
-			// Dest is an existing folder — copy into it
 			if srcType == "folder" {
 				item, err := api.CopyFolder(boxClient, srcID, destID, name)
 				if err != nil {
@@ -55,7 +51,6 @@ the item is copied there with that name.`,
 			return
 		}
 
-		// Dest doesn't exist — treat parent as dest folder, basename as name
 		destParent := path.Dir(destPath)
 		if name == "" {
 			name = path.Base(destPath)

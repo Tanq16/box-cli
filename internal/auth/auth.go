@@ -107,7 +107,6 @@ func saveToken(token *oauth2.Token) error {
 	return json.NewEncoder(f).Encode(token)
 }
 
-// Login performs the OAuth authorization flow interactively.
 func Login() error {
 	creds, err := loadCredentials()
 	if err != nil {
@@ -150,7 +149,6 @@ func Login() error {
 	return nil
 }
 
-// GetClient returns an authenticated HTTP client with auto-refresh.
 func GetClient() (*http.Client, error) {
 	creds, err := loadCredentials()
 	if err != nil {
@@ -166,13 +164,11 @@ func GetClient() (*http.Client, error) {
 	ctx := context.Background()
 	tokenSource := config.TokenSource(ctx, token)
 
-	// Try to get a fresh token (triggers refresh if expired)
 	newToken, err := tokenSource.Token()
 	if err != nil {
 		return nil, fmt.Errorf("unable to refresh token — run 'box login' again: %v", err)
 	}
 
-	// Save if token was refreshed
 	if newToken.AccessToken != token.AccessToken {
 		saveToken(newToken)
 	}
@@ -180,7 +176,6 @@ func GetClient() (*http.Client, error) {
 	return oauth2.NewClient(ctx, tokenSource), nil
 }
 
-// ConfigDir returns the path to ~/.box/
 func ConfigDir() (string, error) {
 	return configDir()
 }

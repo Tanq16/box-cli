@@ -14,7 +14,6 @@ import (
 	"github.com/tanq16/box/internal/types"
 )
 
-// ResolvePath walks a Box path from root "0" and returns the final item ID and type.
 func ResolvePath(c *client.BoxClient, path string, expectedType string) (string, string, error) {
 	if path == "" || path == "/" || path == "root" {
 		return "0", "folder", nil
@@ -93,7 +92,6 @@ func ResolvePath(c *client.BoxClient, path string, expectedType string) (string,
 	return "0", "folder", nil
 }
 
-// ListFolder returns all items in a folder, separated into folders and files.
 func ListFolder(c *client.BoxClient, folderID string) ([]types.BoxItemDisplay, []types.BoxItemDisplay, error) {
 	var allFolders []types.BoxItemDisplay
 	var allFiles []types.BoxItemDisplay
@@ -157,7 +155,6 @@ func ListFolder(c *client.BoxClient, folderID string) ([]types.BoxItemDisplay, [
 	return allFolders, allFiles, nil
 }
 
-// FindOrCreateFolder finds a folder by name under parentID, or creates it.
 func FindOrCreateFolder(c *client.BoxClient, folderName string, parentID string) (string, error) {
 	offset := 0
 	limit := 1000
@@ -196,7 +193,6 @@ func FindOrCreateFolder(c *client.BoxClient, folderName string, parentID string)
 		}
 	}
 
-	// Create folder
 	body := fmt.Sprintf(`{"name":%q,"parent":{"id":%q}}`, folderName, parentID)
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/folders", client.APIBaseURL), bytes.NewBufferString(body))
 	if err != nil {
@@ -216,7 +212,6 @@ func FindOrCreateFolder(c *client.BoxClient, folderName string, parentID string)
 	return folder.ID, nil
 }
 
-// GetFolderInfo retrieves folder metadata by ID.
 func GetFolderInfo(c *client.BoxClient, folderID string) (*types.BoxItem, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/folders/%s", client.APIBaseURL, folderID), nil)
 	if err != nil {
@@ -234,7 +229,6 @@ func GetFolderInfo(c *client.BoxClient, folderID string) (*types.BoxItem, error)
 	return &item, nil
 }
 
-// CreateFolder creates a new folder under parentID.
 func CreateFolder(c *client.BoxClient, folderName string, parentID string) (*types.BoxItem, error) {
 	body := fmt.Sprintf(`{"name":%q,"parent":{"id":%q}}`, folderName, parentID)
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/folders", client.APIBaseURL), bytes.NewBufferString(body))
@@ -255,7 +249,6 @@ func CreateFolder(c *client.BoxClient, folderName string, parentID string) (*typ
 	return &folder, nil
 }
 
-// MoveItem moves a file or folder to a new parent folder.
 func MoveItem(c *client.BoxClient, itemType string, itemID string, newParentID string) (*types.BoxItem, error) {
 	endpoint := "files"
 	if itemType == "folder" {
@@ -276,7 +269,6 @@ func MoveItem(c *client.BoxClient, itemType string, itemID string, newParentID s
 	return &item, nil
 }
 
-// RenameItem renames a file or folder.
 func RenameItem(c *client.BoxClient, itemType string, itemID string, newName string) (*types.BoxItem, error) {
 	endpoint := "files"
 	if itemType == "folder" {
@@ -297,7 +289,6 @@ func RenameItem(c *client.BoxClient, itemType string, itemID string, newName str
 	return &item, nil
 }
 
-// CopyFile copies a file to a destination folder, optionally with a new name.
 func CopyFile(c *client.BoxClient, fileID string, destFolderID string, newName string) (*types.BoxItem, error) {
 	bodyMap := map[string]interface{}{
 		"parent": map[string]string{"id": destFolderID},
@@ -320,7 +311,6 @@ func CopyFile(c *client.BoxClient, fileID string, destFolderID string, newName s
 	return &item, nil
 }
 
-// CopyFolder copies a folder to a destination folder, optionally with a new name.
 func CopyFolder(c *client.BoxClient, folderID string, destFolderID string, newName string) (*types.BoxItem, error) {
 	bodyMap := map[string]interface{}{
 		"parent": map[string]string{"id": destFolderID},
@@ -343,7 +333,6 @@ func CopyFolder(c *client.BoxClient, folderID string, destFolderID string, newNa
 	return &item, nil
 }
 
-// DeleteFolder deletes a folder by ID (recursively).
 func DeleteFolder(c *client.BoxClient, folderID string) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/folders/%s", client.APIBaseURL, folderID), nil)
 	if err != nil {
@@ -364,7 +353,6 @@ func DeleteFolder(c *client.BoxClient, folderID string) error {
 	return nil
 }
 
-// DeleteFile deletes a file by ID.
 func DeleteFile(c *client.BoxClient, fileID string) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/files/%s", client.APIBaseURL, fileID), nil)
 	if err != nil {

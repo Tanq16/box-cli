@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/box/internal/api"
-	u "github.com/tanq16/box/internal/utils"
+	u "github.com/tanq16/box/utils"
 )
 
 var mkdirFlags struct {
@@ -25,7 +25,6 @@ var mkdirCmd = &cobra.Command{
 		}
 
 		if mkdirFlags.parents {
-			// Create all intermediate directories
 			segments := strings.Split(remotePath, "/")
 			parentID := "0"
 			for _, segment := range segments {
@@ -39,7 +38,6 @@ var mkdirCmd = &cobra.Command{
 			return
 		}
 
-		// Single folder creation
 		parentPath := path.Dir(remotePath)
 		folderName := path.Base(remotePath)
 

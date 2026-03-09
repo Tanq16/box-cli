@@ -11,7 +11,6 @@ import (
 	"github.com/tanq16/box/internal/types"
 )
 
-// CreateCollaboration creates a collaboration on a file or folder.
 func CreateCollaboration(c *client.BoxClient, itemType, itemID, role, userEmail, userID, groupID string) (*types.Collaboration, error) {
 	payload := map[string]interface{}{
 		"item": map[string]string{
@@ -55,7 +54,6 @@ func CreateCollaboration(c *client.BoxClient, itemType, itemID, role, userEmail,
 	return &collab, nil
 }
 
-// GetCollaboration retrieves a collaboration by ID.
 func GetCollaboration(c *client.BoxClient, collabID string) (*types.Collaboration, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/collaborations/%s", client.APIBaseURL, collabID), nil)
 	if err != nil {
@@ -70,7 +68,6 @@ func GetCollaboration(c *client.BoxClient, collabID string) (*types.Collaboratio
 	return &collab, nil
 }
 
-// UpdateCollaboration updates a collaboration's role or status.
 func UpdateCollaboration(c *client.BoxClient, collabID, role, status string) (*types.Collaboration, error) {
 	payload := map[string]string{}
 	if role != "" {
@@ -99,7 +96,6 @@ func UpdateCollaboration(c *client.BoxClient, collabID, role, status string) (*t
 	return &collab, nil
 }
 
-// DeleteCollaboration removes a collaboration.
 func DeleteCollaboration(c *client.BoxClient, collabID string) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/collaborations/%s", client.APIBaseURL, collabID), nil)
 	if err != nil {
@@ -117,7 +113,6 @@ func DeleteCollaboration(c *client.BoxClient, collabID string) error {
 	return nil
 }
 
-// ListPendingCollaborations retrieves all pending collaborations.
 func ListPendingCollaborations(c *client.BoxClient) (*types.CollaborationList, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/collaborations", client.APIBaseURL), nil)
 	if err != nil {

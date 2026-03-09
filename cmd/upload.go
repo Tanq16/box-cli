@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/box/internal/api"
-	u "github.com/tanq16/box/internal/utils"
+	u "github.com/tanq16/box/utils"
 )
 
 var uploadFlags struct {
@@ -43,8 +43,7 @@ var uploadCmd = &cobra.Command{
 			return
 		}
 
-		// Check if chunked upload should be used
-		const chunkedThreshold = 50 * 1024 * 1024 // 50MB
+		const chunkedThreshold = 50 * 1024 * 1024
 		if uploadFlags.chunked || info.Size() > chunkedThreshold {
 			u.PrintInfo("cmd",fmt.Sprintf("Uploading '%s' via chunked upload (%s)...", localPath, u.FormatSize(info.Size())))
 			if err := api.UploadFileChunked(boxClient, localPath, parentFolderID); err != nil {

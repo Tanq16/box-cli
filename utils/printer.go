@@ -9,62 +9,75 @@ import (
 )
 
 var (
-	infoStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("12")) // blue
-	successStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("10")) // green
-	errorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))  // red
-	warnStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("11")) // yellow
+	infoStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("12"))
+	successStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
+	errorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	warnStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
 )
 
-// PrintInfo prints an info message in blue
 func PrintInfo(pkg, msg string) {
 	if GlobalDebugFlag {
 		log.Info().Str("package", pkg).Msg(msg)
+	} else if GlobalForAIFlag {
+		fmt.Println("[INFO] " + msg)
 	} else {
 		fmt.Println(infoStyle.Render("→ " + msg))
 	}
 }
 
-// PrintSuccess prints a success message in green
 func PrintSuccess(pkg, msg string) {
 	if GlobalDebugFlag {
 		log.Info().Str("package", pkg).Msg(msg)
+	} else if GlobalForAIFlag {
+		fmt.Println("[OK] " + msg)
 	} else {
 		fmt.Println(successStyle.Render("✓ " + msg))
 	}
 }
 
-// PrintError prints an error message in red (does not exit)
-// When debug is enabled, also logs the actual error
 func PrintError(pkg, msg string, err error) {
 	if GlobalDebugFlag && err != nil {
 		log.Error().Str("package", pkg).Err(err).Msg(msg)
+	} else if GlobalForAIFlag {
+		if err != nil {
+			fmt.Printf("[ERROR] %s: %v\n", msg, err)
+		} else {
+			fmt.Println("[ERROR] " + msg)
+		}
 	} else {
 		fmt.Println(errorStyle.Render("✗ " + msg))
 	}
 }
 
-// PrintFatal prints an error message and exits
-// When debug is enabled, also logs the actual error
 func PrintFatal(pkg, msg string, err error) {
 	if GlobalDebugFlag && err != nil {
 		log.Error().Str("package", pkg).Err(err).Msg(msg)
+	} else if GlobalForAIFlag {
+		if err != nil {
+			fmt.Printf("[ERROR] %s: %v\n", msg, err)
+		} else {
+			fmt.Println("[ERROR] " + msg)
+		}
 	} else {
 		fmt.Println(errorStyle.Render("✗ " + msg))
 	}
 	os.Exit(1)
 }
 
-// PrintWarn prints a warning message in yellow
-// When debug is enabled, also logs the actual error
 func PrintWarn(pkg, msg string, err error) {
 	if GlobalDebugFlag && err != nil {
 		log.Warn().Str("package", pkg).Err(err).Msg(msg)
+	} else if GlobalForAIFlag {
+		if err != nil {
+			fmt.Printf("[WARN] %s: %v\n", msg, err)
+		} else {
+			fmt.Println("[WARN] " + msg)
+		}
 	} else {
 		fmt.Println(warnStyle.Render("! " + msg))
 	}
 }
 
-// PrintGeneric prints plain text without styling
 func PrintGeneric(msg string) {
 	fmt.Println(msg)
 }

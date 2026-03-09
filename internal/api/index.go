@@ -14,7 +14,6 @@ import (
 	"github.com/tanq16/box/internal/types"
 )
 
-// GenerateIndex crawls a Box folder recursively and saves an index to ~/.box/index.json.
 func GenerateIndex(c *client.BoxClient, rootPath string) error {
 	folderID, _, err := ResolvePath(c, rootPath, "folder")
 	if err != nil {
@@ -102,7 +101,6 @@ func loadIndex() (*types.IndexStore, error) {
 	return &store, nil
 }
 
-// SearchIndex searches the local index with a regex pattern.
 func SearchIndex(pattern string, filterType string, pathPrefix string) ([]types.IndexItem, error) {
 	idx, err := loadIndex()
 	if err != nil {

@@ -1,6 +1,9 @@
 package utils
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
 )
@@ -19,9 +22,12 @@ var (
 		Foreground(lipgloss.Color("8"))
 )
 
-// PrintTable prints a formatted table with headers and rows
-// Note: table.HeaderRow == -1, data rows start at 0
 func PrintTable(headers []string, rows [][]string) {
+	if GlobalForAIFlag {
+		printMarkdownTable(headers, rows)
+		return
+	}
+
 	t := table.New().
 		Border(lipgloss.NormalBorder()).
 		BorderStyle(borderStyle).
@@ -35,4 +41,27 @@ func PrintTable(headers []string, rows [][]string) {
 		})
 
 	PrintGeneric(t.Render())
+}
+
+func printMarkdownTable(headers []string, rows [][]string) {
+	if len(headers) == 0 {
+		return
+	}
+	fmt.Println("| " + strings.Join(escapeCells(headers), " | ") + " |")
+	seps := make([]string, len(headers))
+	for i := range seps {
+		seps[i] = "---"
+	}
+	fmt.Println("| " + strings.Join(seps, " | ") + " |")
+	for _, row := range rows {
+		fmt.Println("| " + strings.Join(escapeCells(row), " | ") + " |")
+	}
+}
+
+func escapeCells(cells []string) []string {
+	escaped := make([]string, len(cells))
+	for i, cell := range cells {
+		escaped[i] = strings.ReplaceAll(cell, "|", "\\|")
+	}
+	return escaped
 }

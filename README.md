@@ -2,7 +2,7 @@
   <img src=".github/assets/logo.svg" alt="Box Logo" width="200">
   <h1>Box</h1>
 
-  <a href="https://github.com/tanq16/box/actions/workflows/release.yml"><img alt="Build Workflow" src="https://github.com/tanq16/box/actions/workflows/release.yml/badge.svg"></a>&nbsp;<a href="https://github.com/tanq16/box/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/tanq16/box"></a><br><br>
+  <a href="https://github.com/tanq16/box/actions/workflows/release.yaml"><img alt="Build Workflow" src="https://github.com/tanq16/box/actions/workflows/release.yaml/badge.svg"></a>&nbsp;<a href="https://github.com/tanq16/box/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/tanq16/box"></a><br><br>
   <a href="#capabilities">Capabilities</a> &bull; <a href="#installation">Installation</a> &bull; <a href="#usage">Usage</a> &bull; <a href="#tips-and-notes">Tips & Notes</a>
 </div>
 

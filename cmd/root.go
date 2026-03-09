@@ -10,11 +10,12 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tanq16/box/internal/auth"
 	"github.com/tanq16/box/internal/client"
-	"github.com/tanq16/box/internal/utils"
+	"github.com/tanq16/box/utils"
 )
 
 var AppVersion = "dev-build"
 var debugFlag bool
+var forAIFlag bool
 
 var boxClient *client.BoxClient
 
@@ -26,7 +27,6 @@ var rootCmd = &cobra.Command{
 		HiddenDefaultCmd: true,
 	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Skip auth for login command
 		if cmd.Name() == "login" {
 			return
 		}
@@ -59,15 +59,18 @@ func setupLogs() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		utils.GlobalDebugFlag = true
 	}
+	if forAIFlag {
+		utils.GlobalForAIFlag = true
+		zerolog.SetGlobalLevel(zerolog.Disabled)
+	}
 }
 
 func init() {
-	// Hide default help and completion commands
 	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
 
-	// Global debug flag
 	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Enable debug logging")
+	rootCmd.PersistentFlags().BoolVar(&forAIFlag, "for-ai", false, "AI-friendly output (plain text, piped input)")
+	rootCmd.MarkFlagsMutuallyExclusive("debug", "for-ai")
 
-	// Initialize logging on startup
 	cobra.OnInitialize(setupLogs)
 }

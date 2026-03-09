@@ -46,7 +46,6 @@ func getRemoteFileHash(c *client.BoxClient, fileID string) (string, error) {
 	return file.SHA1, err
 }
 
-// BuildLocalTree builds a file tree from a local directory.
 func BuildLocalTree(rootDir string, ignoreSet map[string]struct{}) (*types.FileTree, error) {
 	tree := &types.FileTree{
 		Files: make(map[string]types.FileInfo),
@@ -110,7 +109,6 @@ func BuildLocalTree(rootDir string, ignoreSet map[string]struct{}) (*types.FileT
 	return tree, err
 }
 
-// BuildRemoteTree builds a file tree from a remote Box folder.
 func BuildRemoteTree(c *client.BoxClient, folderID string, basePath string, ignoreSet map[string]struct{}) (*types.FileTree, error) {
 	tree := &types.FileTree{
 		Files: make(map[string]types.FileInfo),
@@ -162,7 +160,6 @@ func BuildRemoteTree(c *client.BoxClient, folderID string, basePath string, igno
 	return tree, nil
 }
 
-// SyncPush syncs local→remote: local is truth.
 func SyncPush(ctx context.Context, c *client.BoxClient, localDir string, remotePath string, concurrency int, ignore []string) error {
 	ignoreSet := makeIgnoreSet(ignore)
 
@@ -189,13 +186,9 @@ func SyncPush(ctx context.Context, c *client.BoxClient, localDir string, remoteP
 }
 
 func syncPushTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, local *types.FileTree, remote *types.FileTree, localDir string, remoteFolderID string) {
-	// Upload new/changed files
 	for name, localFile := range local.Files {
 		remoteFile, exists := remote.Files[name]
 		if !exists || remoteFile.Hash != localFile.Hash {
-			name := name
-			remoteFile := remoteFile
-			exists := exists
 			g.Go(func() error {
 				if ctx.Err() != nil {
 					return ctx.Err()
@@ -219,11 +212,8 @@ func syncPushTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, l
 		}
 	}
 
-	// Delete remote-only files
 	for name, remoteFile := range remote.Files {
 		if _, exists := local.Files[name]; !exists {
-			name := name
-			remoteFile := remoteFile
 			g.Go(func() error {
 				if ctx.Err() != nil {
 					return ctx.Err()
@@ -238,7 +228,6 @@ func syncPushTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, l
 		}
 	}
 
-	// Recurse into subdirectories
 	for name, localSubTree := range local.Dirs {
 		if ctx.Err() != nil {
 			return
@@ -266,7 +255,6 @@ func syncPushTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, l
 		syncPushTree(ctx, g, c, localSubTree, remoteSubTree, subLocalDir, subFolderID)
 	}
 
-	// Delete remote-only folders
 	for name := range remote.Dirs {
 		if _, exists := local.Dirs[name]; !exists {
 			folderID := getFolderIDFromRemote(c, remoteFolderID, name)
@@ -281,7 +269,6 @@ func syncPushTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, l
 	}
 }
 
-// SyncPull syncs remote→local: remote is truth.
 func SyncPull(ctx context.Context, c *client.BoxClient, remotePath string, localDir string, concurrency int, ignore []string) error {
 	ignoreSet := makeIgnoreSet(ignore)
 
@@ -297,7 +284,6 @@ func SyncPull(ctx context.Context, c *client.BoxClient, remotePath string, local
 
 	localTree, err := BuildLocalTree(localDir, ignoreSet)
 	if err != nil {
-		// Local dir might not exist yet
 		os.MkdirAll(localDir, 0755)
 		localTree = &types.FileTree{
 			Files: make(map[string]types.FileInfo),
@@ -315,12 +301,9 @@ func SyncPull(ctx context.Context, c *client.BoxClient, remotePath string, local
 func syncPullTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, remote *types.FileTree, local *types.FileTree, localDir string, remoteFolderID string) {
 	os.MkdirAll(localDir, 0755)
 
-	// Download new/changed files
 	for name, remoteFile := range remote.Files {
 		localFile, exists := local.Files[name]
 		if !exists || localFile.Hash != remoteFile.Hash {
-			name := name
-			remoteFile := remoteFile
 			g.Go(func() error {
 				if ctx.Err() != nil {
 					return ctx.Err()
@@ -336,7 +319,6 @@ func syncPullTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, r
 		}
 	}
 
-	// Delete local-only files
 	for name := range local.Files {
 		if _, exists := remote.Files[name]; !exists {
 			localPath := filepath.Join(localDir, name)
@@ -348,7 +330,6 @@ func syncPullTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, r
 		}
 	}
 
-	// Recurse into subdirectories
 	for name, remoteSubTree := range remote.Dirs {
 		if ctx.Err() != nil {
 			return
@@ -367,7 +348,6 @@ func syncPullTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, r
 		syncPullTree(ctx, g, c, remoteSubTree, localSubTree, subLocalDir, subFolderID)
 	}
 
-	// Delete local-only folders
 	for name := range local.Dirs {
 		if _, exists := remote.Dirs[name]; !exists {
 			localPath := filepath.Join(localDir, name)

@@ -1,11 +1,47 @@
 package utils
 
 import (
+	"bufio"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+var stdinScanner *bufio.Scanner
+
+func getStdinScanner() *bufio.Scanner {
+	if stdinScanner == nil {
+		stdinScanner = bufio.NewScanner(os.Stdin)
+	}
+	return stdinScanner
+}
+
+func ReadPipedInput() string {
+	fi, err := os.Stdin.Stat()
+	if err != nil || fi.Mode()&os.ModeCharDevice != 0 {
+		return ""
+	}
+	scanner := getStdinScanner()
+	var lines []string
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	return strings.TrimSpace(strings.Join(lines, "\n"))
+}
+
+func ReadPipedLine() string {
+	fi, err := os.Stdin.Stat()
+	if err != nil || fi.Mode()&os.ModeCharDevice != 0 {
+		return ""
+	}
+	scanner := getStdinScanner()
+	if scanner.Scan() {
+		return strings.TrimSpace(scanner.Text())
+	}
+	return ""
+}
 
 type inputModel struct {
 	textInput textinput.Model
@@ -44,8 +80,11 @@ func (m inputModel) View() string {
 	return m.textInput.View()
 }
 
-// PromptInput displays an inline prompt and returns user input
 func PromptInput(prompt string, placeholder string) (string, error) {
+	if GlobalForAIFlag {
+		return ReadPipedLine(), nil
+	}
+
 	ti := textinput.New()
 	ti.Placeholder = placeholder
 	ti.Prompt = prompt + " "
@@ -63,8 +102,11 @@ func PromptInput(prompt string, placeholder string) (string, error) {
 	return strings.TrimSpace(result.value), nil
 }
 
-// PromptPassword displays an inline password prompt (masked input)
 func PromptPassword(prompt string) (string, error) {
+	if GlobalForAIFlag {
+		return ReadPipedLine(), nil
+	}
+
 	ti := textinput.New()
 	ti.Placeholder = "••••••••"
 	ti.Prompt = prompt + " "

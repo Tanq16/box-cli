@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/box/internal/api"
-	u "github.com/tanq16/box/internal/utils"
+	u "github.com/tanq16/box/utils"
 )
 
 var slFlags struct {
@@ -91,16 +91,13 @@ var slResolveCmd = &cobra.Command{
 }
 
 func init() {
-	// Shared --id flag on create/get/remove (alternative to path)
 	slCreateCmd.Flags().StringVar(&slFlags.itemID, "id", "", "Item ID (instead of path)")
 	slGetCmd.Flags().StringVar(&slFlags.itemID, "id", "", "Item ID (instead of path)")
 	slRemoveCmd.Flags().StringVar(&slFlags.itemID, "id", "", "Item ID (instead of path)")
 
-	// Create-specific flags
 	slCreateCmd.Flags().StringVarP(&slFlags.access, "access", "a", "open", "Access level (open, company, collaborators)")
 	slCreateCmd.Flags().StringVarP(&slFlags.password, "password", "P", "", "Password for shared link")
 
-	// Resolve-specific flag
 	slResolveCmd.Flags().StringVarP(&slFlags.password, "password", "P", "", "Shared link password")
 
 	sharedLinkCmd.AddCommand(slCreateCmd)

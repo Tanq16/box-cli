@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tanq16/box/internal/api"
 	"github.com/tanq16/box/internal/types"
-	u "github.com/tanq16/box/internal/utils"
+	u "github.com/tanq16/box/utils"
 )
 
 var collabCreateFlags struct {
@@ -42,7 +42,6 @@ For advanced cases, use --user-id or --group-id instead of a positional email.`,
 
 		if collabCreateFlags.id != "" {
 			itemID, itemType = resolveItemByID(collabCreateFlags.id)
-			// When using --id, email is the first positional arg
 			if len(args) < 1 && collabCreateFlags.userID == "" && collabCreateFlags.groupID == "" {
 				u.PrintFatal("cmd","Must specify an email, --user-id, or --group-id", nil)
 			}
@@ -52,13 +51,11 @@ For advanced cases, use --user-id or --group-id instead of a positional email.`,
 			}
 			itemID, itemType = resolveItem(args[:1], "")
 
-			// Email is second positional arg when using path
 			if len(args) < 2 && collabCreateFlags.userID == "" && collabCreateFlags.groupID == "" {
 				u.PrintFatal("cmd","Must specify an email, --user-id, or --group-id", nil)
 			}
 		}
 
-		// Determine the email from positional args
 		var email string
 		if collabCreateFlags.id != "" && len(args) >= 1 {
 			email = args[0]

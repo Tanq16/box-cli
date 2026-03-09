@@ -10,7 +10,6 @@ import (
 	"github.com/tanq16/box/internal/types"
 )
 
-// CreateSharedLink creates a shared link on a file or folder.
 func CreateSharedLink(c *client.BoxClient, itemType, itemID, access, password string) (*types.BoxItem, error) {
 	endpoint := "files"
 	if itemType == "folder" {
@@ -49,7 +48,6 @@ func CreateSharedLink(c *client.BoxClient, itemType, itemID, access, password st
 	return &item, nil
 }
 
-// GetSharedLink retrieves the shared link for a file or folder.
 func GetSharedLink(c *client.BoxClient, itemType, itemID string) (*types.BoxItem, error) {
 	endpoint := "files"
 	if itemType == "folder" {
@@ -72,7 +70,6 @@ func GetSharedLink(c *client.BoxClient, itemType, itemID string) (*types.BoxItem
 	return &item, nil
 }
 
-// RemoveSharedLink removes the shared link from a file or folder.
 func RemoveSharedLink(c *client.BoxClient, itemType, itemID string) error {
 	endpoint := "files"
 	if itemType == "folder" {
@@ -94,7 +91,6 @@ func RemoveSharedLink(c *client.BoxClient, itemType, itemID string) error {
 	return err
 }
 
-// ResolveSharedLink resolves a shared link URL to get item info.
 func ResolveSharedLink(c *client.BoxClient, sharedURL string, password string) (*types.BoxItem, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/shared_items", client.APIBaseURL), nil)
 	if err != nil {

@@ -17,7 +17,6 @@ import (
 	"github.com/tanq16/box/internal/types"
 )
 
-// UploadFileChunked uploads a large file using Box's chunked upload API.
 func UploadFileChunked(c *client.BoxClient, localPath string, parentFolderID string) error {
 	file, err := os.Open(localPath)
 	if err != nil {
@@ -32,7 +31,6 @@ func UploadFileChunked(c *client.BoxClient, localPath string, parentFolderID str
 	fileSize := stat.Size()
 	fileName := filepath.Base(localPath)
 
-	// Create upload session
 	session, err := createUploadSession(c, fileName, parentFolderID, fileSize)
 	if err != nil {
 		return fmt.Errorf("failed to create upload session: %w", err)
@@ -40,7 +38,6 @@ func UploadFileChunked(c *client.BoxClient, localPath string, parentFolderID str
 
 	fmt.Fprintf(os.Stderr, "Upload session created: %d parts of %d bytes each\n", session.TotalParts, session.PartSize)
 
-	// Compute whole-file SHA1 while uploading parts
 	file.Seek(0, io.SeekStart)
 	wholeFileHash := sha1.New()
 
@@ -54,7 +51,6 @@ func UploadFileChunked(c *client.BoxClient, localPath string, parentFolderID str
 			currentPartSize = fileSize - offset
 		}
 
-		// Read part into buffer
 		buf := make([]byte, currentPartSize)
 		n, err := io.ReadFull(file, buf)
 		if err != nil && err != io.ErrUnexpectedEOF {
@@ -63,10 +59,8 @@ func UploadFileChunked(c *client.BoxClient, localPath string, parentFolderID str
 		}
 		buf = buf[:n]
 
-		// Hash for whole file
 		wholeFileHash.Write(buf)
 
-		// Upload part
 		part, err := uploadPart(c, session.ID, buf, offset, fileSize)
 		if err != nil {
 			abortUploadSession(c, session.ID)
@@ -78,7 +72,6 @@ func UploadFileChunked(c *client.BoxClient, localPath string, parentFolderID str
 		fmt.Fprintf(os.Stderr, "Uploaded part %d/%d\n", partNum+1, session.TotalParts)
 	}
 
-	// Commit
 	wholeDigest := base64.StdEncoding.EncodeToString(wholeFileHash.Sum(nil))
 	if err := commitUploadSession(c, session.ID, parts, wholeDigest); err != nil {
 		abortUploadSession(c, session.ID)
@@ -106,7 +99,6 @@ func createUploadSession(c *client.BoxClient, fileName string, folderID string, 
 }
 
 func uploadPart(c *client.BoxClient, sessionID string, data []byte, offset int64, totalSize int64) (*types.UploadPart, error) {
-	// Compute SHA1 of this part
 	h := sha1.New()
 	h.Write(data)
 	digest := "sha=" + base64.StdEncoding.EncodeToString(h.Sum(nil))
@@ -158,7 +150,6 @@ func commitUploadSession(c *client.BoxClient, sessionID string, parts []types.Up
 			return nil
 		}
 		if resp.StatusCode == http.StatusAccepted {
-			// Not ready yet — check Retry-After
 			wait := 2
 			if ra := resp.Header.Get("Retry-After"); ra != "" {
 				if v, err := strconv.Atoi(ra); err == nil {

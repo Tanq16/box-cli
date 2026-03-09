@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/box/internal/api"
-	u "github.com/tanq16/box/internal/utils"
+	u "github.com/tanq16/box/utils"
 )
 
 var downloadFlags struct {
@@ -40,7 +40,6 @@ var downloadCmd = &cobra.Command{
 			}
 		}
 
-		// Determine local path
 		localPath := ""
 		if downloadFlags.fileID != "" && len(args) >= 1 {
 			localPath = args[0]
@@ -75,7 +74,6 @@ var downloadCmd = &cobra.Command{
 			}
 		}
 
-		// Ensure parent directory exists
 		if localPath != "" {
 			if dir := filepath.Dir(localPath); dir != "." {
 				os.MkdirAll(dir, 0755)

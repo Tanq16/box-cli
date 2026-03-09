@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/box/internal/api"
-	u "github.com/tanq16/box/internal/utils"
+	u "github.com/tanq16/box/utils"
 )
 
 var moveCmd = &cobra.Command{
@@ -22,16 +22,13 @@ If source and dest share the same parent, the item is renamed.`,
 		srcPath := args[0]
 		destPath := args[1]
 
-		// Resolve source
 		srcID, srcType, err := api.ResolvePath(boxClient, srcPath, "")
 		if err != nil {
 			u.PrintFatal("cmd","Failed to resolve source path", err)
 		}
 
-		// Try resolving dest as an existing folder (move into it)
 		destID, destType, destErr := api.ResolvePath(boxClient, destPath, "")
 		if destErr == nil && destType == "folder" {
-			// Dest is an existing folder — move source into it
 			item, err := api.MoveItem(boxClient, srcType, srcID, destID)
 			if err != nil {
 				u.PrintFatal("cmd","Failed to move item", err)
@@ -40,7 +37,6 @@ If source and dest share the same parent, the item is renamed.`,
 			return
 		}
 
-		// Dest doesn't exist as a folder — treat as parent/newname
 		destParent := path.Dir(destPath)
 		destName := path.Base(destPath)
 
@@ -49,12 +45,10 @@ If source and dest share the same parent, the item is renamed.`,
 			u.PrintFatal("cmd","Failed to resolve destination parent", err)
 		}
 
-		// Check if source parent matches dest parent (pure rename)
 		srcParent := path.Dir(srcPath)
 		srcParentID, _, _ := api.ResolvePath(boxClient, srcParent, "folder")
 
 		if srcParentID == destParentID {
-			// Same parent — just rename
 			item, err := api.RenameItem(boxClient, srcType, srcID, destName)
 			if err != nil {
 				u.PrintFatal("cmd","Failed to rename item", err)
@@ -63,7 +57,6 @@ If source and dest share the same parent, the item is renamed.`,
 			return
 		}
 
-		// Different parent — move then rename
 		item, err := api.MoveItem(boxClient, srcType, srcID, destParentID)
 		if err != nil {
 			u.PrintFatal("cmd","Failed to move item", err)

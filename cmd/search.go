@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tanq16/box/internal/api"
 	"github.com/tanq16/box/internal/types"
-	u "github.com/tanq16/box/internal/utils"
+	u "github.com/tanq16/box/utils"
 )
 
 var searchFlags struct {
@@ -25,9 +25,6 @@ var searchFlags struct {
 	limit      int
 }
 
-// parseRelativeTime parses a shorthand like "2h", "3d", "1w", "2M", "1y"
-// and returns the RFC3339 timestamp for that duration ago from now.
-// Supported units: s (seconds), m (minutes), h (hours), d (days), w (weeks), M (months), y (years).
 func parseRelativeTime(s string) (string, error) {
 	if s == "" {
 		return "", nil

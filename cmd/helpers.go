@@ -2,11 +2,9 @@ package cmd
 
 import (
 	"github.com/tanq16/box/internal/api"
-	u "github.com/tanq16/box/internal/utils"
+	u "github.com/tanq16/box/utils"
 )
 
-// resolveItemByID detects whether an ID refers to a file or folder.
-// Tries file first via GetFileInfo, falls back to folder via GetFolderInfo.
 func resolveItemByID(id string) (string, string) {
 	info, err := api.GetFileInfo(boxClient, id)
 	if err == nil {
@@ -17,11 +15,9 @@ func resolveItemByID(id string) (string, string) {
 		return fInfo.ID, fInfo.Type
 	}
 	u.PrintFatal("cmd","Failed to resolve item ID", err)
-	return "", "" // unreachable
+	return "", ""
 }
 
-// resolveItem resolves an item by path or --id flag.
-// Returns (itemID, itemType). Calls PrintFatal on failure.
 func resolveItem(args []string, idFlag string) (string, string) {
 	if idFlag != "" {
 		return resolveItemByID(idFlag)

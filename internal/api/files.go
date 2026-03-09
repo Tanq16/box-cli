@@ -15,7 +15,6 @@ import (
 	"github.com/tanq16/box/internal/types"
 )
 
-// GetFileInfo retrieves file metadata by ID.
 func GetFileInfo(c *client.BoxClient, fileID string) (*types.BoxItem, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/files/%s", client.APIBaseURL, fileID), nil)
 	if err != nil {
@@ -33,7 +32,6 @@ func GetFileInfo(c *client.BoxClient, fileID string) (*types.BoxItem, error) {
 	return &item, nil
 }
 
-// UploadFile uploads a single file to a Box folder using multipart POST.
 func UploadFile(c *client.BoxClient, localPath string, parentFolderID string) error {
 	file, err := os.Open(localPath)
 	if err != nil {
@@ -72,7 +70,6 @@ func UploadFile(c *client.BoxClient, localPath string, parentFolderID string) er
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusConflict {
-		// File already exists — upload new version
 		var conflictErr struct {
 			ContextInfo struct {
 				Conflicts []types.BoxItem `json:"conflicts"`
@@ -92,7 +89,6 @@ func UploadFile(c *client.BoxClient, localPath string, parentFolderID string) er
 	return nil
 }
 
-// UploadFileVersion uploads a new version of an existing file.
 func UploadFileVersion(c *client.BoxClient, localPath string, fileID string) error {
 	file, err := os.Open(localPath)
 	if err != nil {
@@ -135,7 +131,6 @@ func UploadFileVersion(c *client.BoxClient, localPath string, fileID string) err
 	return nil
 }
 
-// UploadFolder recursively uploads a local directory to Box.
 func UploadFolder(c *client.BoxClient, localPath string, parentFolderID string) error {
 	rootFolderName := filepath.Base(localPath)
 	rootBoxID, err := FindOrCreateFolder(c, rootFolderName, parentFolderID)
@@ -178,9 +173,7 @@ func UploadFolder(c *client.BoxClient, localPath string, parentFolderID string) 
 	})
 }
 
-// DownloadFile downloads a file by ID to a local path.
 func DownloadFile(c *client.BoxClient, fileID string, localPath string) (string, error) {
-	// If no local path, get filename from API
 	if localPath == "" {
 		info, err := GetFileInfo(c, fileID)
 		if err == nil && info.Name != "" {
@@ -215,7 +208,6 @@ func DownloadFile(c *client.BoxClient, fileID string, localPath string) (string,
 	return localPath, nil
 }
 
-// DownloadFolder recursively downloads a folder to a local directory.
 func DownloadFolder(c *client.BoxClient, folderID string, localPath string) error {
 	if err := os.MkdirAll(localPath, 0755); err != nil {
 		return fmt.Errorf("failed to create directory '%s': %w", localPath, err)
@@ -245,7 +237,6 @@ func DownloadFolder(c *client.BoxClient, folderID string, localPath string) erro
 	return nil
 }
 
-// ResolveRemoteFileID resolves a remote path or uses the --id flag to get a file ID.
 func ResolveRemoteFileID(c *client.BoxClient, remotePath string, directID string) (string, error) {
 	if directID != "" {
 		return directID, nil
@@ -263,7 +254,6 @@ func ResolveRemoteFileID(c *client.BoxClient, remotePath string, directID string
 	return id, nil
 }
 
-// ResolveRemoteFolderID resolves a remote path or uses the --id flag to get a folder ID.
 func ResolveRemoteFolderID(c *client.BoxClient, remotePath string, directID string) (string, error) {
 	if directID != "" {
 		return directID, nil
