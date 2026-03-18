@@ -8,6 +8,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/tanq16/box/cmd/cmdutil"
+	collabcmd "github.com/tanq16/box/cmd/collab-cmd"
+	sharedlinkcmd "github.com/tanq16/box/cmd/shared-link-cmd"
+	synccmd "github.com/tanq16/box/cmd/sync-cmd"
 	"github.com/tanq16/box/internal/auth"
 	"github.com/tanq16/box/internal/client"
 	"github.com/tanq16/box/utils"
@@ -18,6 +22,7 @@ var debugFlag bool
 var forAIFlag bool
 
 var boxClient *client.BoxClient
+
 
 var rootCmd = &cobra.Command{
 	Use:     "box",
@@ -36,6 +41,7 @@ var rootCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		boxClient = client.New(httpClient)
+		cmdutil.BoxClient = boxClient
 	},
 }
 
@@ -71,6 +77,10 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Enable debug logging")
 	rootCmd.PersistentFlags().BoolVar(&forAIFlag, "for-ai", false, "AI-friendly output (plain text, piped input)")
 	rootCmd.MarkFlagsMutuallyExclusive("debug", "for-ai")
+
+	rootCmd.AddCommand(collabcmd.CollabCmd)
+	rootCmd.AddCommand(sharedlinkcmd.SharedLinkCmd)
+	rootCmd.AddCommand(synccmd.SyncCmd)
 
 	cobra.OnInitialize(setupLogs)
 }

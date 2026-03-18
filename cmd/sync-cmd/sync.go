@@ -1,4 +1,4 @@
-package cmd
+package synccmd
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/tanq16/box/cmd/cmdutil"
 	"github.com/tanq16/box/internal/api"
 	u "github.com/tanq16/box/utils"
 )
@@ -17,7 +18,7 @@ var syncFlags struct {
 	ignore      string
 }
 
-var syncCmd = &cobra.Command{
+var SyncCmd = &cobra.Command{
 	Use:   "sync",
 	Short: "Sync files between local and Box",
 }
@@ -26,7 +27,7 @@ var syncPushCmd = &cobra.Command{
 	Use:   "push <local> <remote>",
 	Short: "Push local changes to Box (local is truth)",
 	Args:  cobra.ExactArgs(2),
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(c *cobra.Command, args []string) {
 		localDir := args[0]
 		remotePath := args[1]
 
@@ -40,7 +41,7 @@ var syncPushCmd = &cobra.Command{
 
 		ignore := parseIgnore(syncFlags.ignore)
 		u.PrintInfo("cmd", fmt.Sprintf("Syncing push: %s → %s (concurrency: %d)", localDir, remotePath, syncFlags.concurrency))
-		if err := api.SyncPush(ctx, boxClient, localDir, remotePath, syncFlags.concurrency, ignore); err != nil {
+		if err := api.SyncPush(ctx, cmdutil.BoxClient, localDir, remotePath, syncFlags.concurrency, ignore); err != nil {
 			u.PrintFatal("cmd", "Sync push failed", err)
 		}
 		u.PrintSuccess("cmd", "Sync push complete")
@@ -51,7 +52,7 @@ var syncPullCmd = &cobra.Command{
 	Use:   "pull <remote> <local>",
 	Short: "Pull remote changes to local (remote is truth)",
 	Args:  cobra.ExactArgs(2),
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(c *cobra.Command, args []string) {
 		remotePath := args[0]
 		localDir := args[1]
 
@@ -60,7 +61,7 @@ var syncPullCmd = &cobra.Command{
 
 		ignore := parseIgnore(syncFlags.ignore)
 		u.PrintInfo("cmd", fmt.Sprintf("Syncing pull: %s → %s (concurrency: %d)", remotePath, localDir, syncFlags.concurrency))
-		if err := api.SyncPull(ctx, boxClient, remotePath, localDir, syncFlags.concurrency, ignore); err != nil {
+		if err := api.SyncPull(ctx, cmdutil.BoxClient, remotePath, localDir, syncFlags.concurrency, ignore); err != nil {
 			u.PrintFatal("cmd", "Sync pull failed", err)
 		}
 		u.PrintSuccess("cmd", "Sync pull complete")
@@ -83,9 +84,8 @@ func parseIgnore(s string) []string {
 }
 
 func init() {
-	syncCmd.PersistentFlags().IntVar(&syncFlags.concurrency, "concurrency", 4, "Number of concurrent operations")
-	syncCmd.PersistentFlags().StringVar(&syncFlags.ignore, "ignore", "", "Comma-separated list of names to ignore")
-	syncCmd.AddCommand(syncPushCmd)
-	syncCmd.AddCommand(syncPullCmd)
-	rootCmd.AddCommand(syncCmd)
+	SyncCmd.PersistentFlags().IntVar(&syncFlags.concurrency, "concurrency", 4, "Number of concurrent operations")
+	SyncCmd.PersistentFlags().StringVar(&syncFlags.ignore, "ignore", "", "Comma-separated list of names to ignore")
+	SyncCmd.AddCommand(syncPushCmd)
+	SyncCmd.AddCommand(syncPullCmd)
 }

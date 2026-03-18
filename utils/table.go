@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/lipgloss/table"
+	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/table"
 )
 
 var (
@@ -15,7 +15,7 @@ var (
 		Padding(0, 1)
 
 	cellStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("15")).
+		Foreground(lipgloss.Color("7")).
 		Padding(0, 1)
 
 	borderStyle = lipgloss.NewStyle().

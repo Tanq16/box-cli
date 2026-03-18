@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 )
 
 var stdinScanner *bufio.Scanner
@@ -50,20 +50,20 @@ type inputModel struct {
 }
 
 func (m inputModel) Init() tea.Cmd {
-	return textinput.Blink
+	return func() tea.Msg { return textinput.Blink() }
 }
 
 func (m inputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEnter:
+	case tea.KeyPressMsg:
+		switch msg.String() {
+		case "enter":
 			m.value = m.textInput.Value()
 			m.done = true
 			return m, tea.Quit
-		case tea.KeyCtrlC, tea.KeyEsc:
+		case "ctrl+c", "esc":
 			m.done = true
 			return m, tea.Quit
 		}
@@ -73,11 +73,11 @@ func (m inputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m inputModel) View() string {
+func (m inputModel) View() tea.View {
 	if m.done {
-		return ""
+		return tea.NewView("")
 	}
-	return m.textInput.View()
+	return tea.NewView(m.textInput.View())
 }
 
 func PromptInput(prompt string, placeholder string) (string, error) {

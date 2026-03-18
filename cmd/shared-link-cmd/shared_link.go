@@ -1,9 +1,10 @@
-package cmd
+package sharedlinkcmd
 
 import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/tanq16/box/cmd/cmdutil"
 	"github.com/tanq16/box/internal/api"
 	u "github.com/tanq16/box/utils"
 )
@@ -14,7 +15,7 @@ var slFlags struct {
 	password string
 }
 
-var sharedLinkCmd = &cobra.Command{
+var SharedLinkCmd = &cobra.Command{
 	Use:   "shared-link",
 	Short: "Manage shared links on Box items",
 }
@@ -23,9 +24,9 @@ var slCreateCmd = &cobra.Command{
 	Use:   "create <path>",
 	Short: "Create a shared link",
 	Args:  cobra.MaximumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		itemID, itemType := resolveItem(args, slFlags.itemID)
-		item, err := api.CreateSharedLink(boxClient, itemType, itemID, slFlags.access, slFlags.password)
+	Run: func(c *cobra.Command, args []string) {
+		itemID, itemType := cmdutil.ResolveItem(args, slFlags.itemID)
+		item, err := api.CreateSharedLink(cmdutil.BoxClient, itemType, itemID, slFlags.access, slFlags.password)
 		if err != nil {
 			u.PrintFatal("cmd","Failed to create shared link", err)
 		}
@@ -44,9 +45,9 @@ var slGetCmd = &cobra.Command{
 	Use:   "get <path>",
 	Short: "Get shared link info for an item",
 	Args:  cobra.MaximumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		itemID, itemType := resolveItem(args, slFlags.itemID)
-		item, err := api.GetSharedLink(boxClient, itemType, itemID)
+	Run: func(c *cobra.Command, args []string) {
+		itemID, itemType := cmdutil.ResolveItem(args, slFlags.itemID)
+		item, err := api.GetSharedLink(cmdutil.BoxClient, itemType, itemID)
 		if err != nil {
 			u.PrintFatal("cmd","Failed to get shared link", err)
 		}
@@ -66,9 +67,9 @@ var slRemoveCmd = &cobra.Command{
 	Use:   "remove <path>",
 	Short: "Remove shared link from an item",
 	Args:  cobra.MaximumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		itemID, itemType := resolveItem(args, slFlags.itemID)
-		if err := api.RemoveSharedLink(boxClient, itemType, itemID); err != nil {
+	Run: func(c *cobra.Command, args []string) {
+		itemID, itemType := cmdutil.ResolveItem(args, slFlags.itemID)
+		if err := api.RemoveSharedLink(cmdutil.BoxClient, itemType, itemID); err != nil {
 			u.PrintFatal("cmd","Failed to remove shared link", err)
 		}
 		u.PrintSuccess("cmd","Shared link removed")
@@ -79,8 +80,8 @@ var slResolveCmd = &cobra.Command{
 	Use:   "resolve <url>",
 	Short: "Resolve a shared link URL to get item info",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		item, err := api.ResolveSharedLink(boxClient, args[0], slFlags.password)
+	Run: func(c *cobra.Command, args []string) {
+		item, err := api.ResolveSharedLink(cmdutil.BoxClient, args[0], slFlags.password)
 		if err != nil {
 			u.PrintFatal("cmd","Failed to resolve shared link", err)
 		}
@@ -100,9 +101,8 @@ func init() {
 
 	slResolveCmd.Flags().StringVarP(&slFlags.password, "password", "P", "", "Shared link password")
 
-	sharedLinkCmd.AddCommand(slCreateCmd)
-	sharedLinkCmd.AddCommand(slGetCmd)
-	sharedLinkCmd.AddCommand(slRemoveCmd)
-	sharedLinkCmd.AddCommand(slResolveCmd)
-	rootCmd.AddCommand(sharedLinkCmd)
+	SharedLinkCmd.AddCommand(slCreateCmd)
+	SharedLinkCmd.AddCommand(slGetCmd)
+	SharedLinkCmd.AddCommand(slRemoveCmd)
+	SharedLinkCmd.AddCommand(slResolveCmd)
 }

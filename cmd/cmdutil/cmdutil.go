@@ -1,16 +1,19 @@
-package cmd
+package cmdutil
 
 import (
 	"github.com/tanq16/box/internal/api"
+	"github.com/tanq16/box/internal/client"
 	u "github.com/tanq16/box/utils"
 )
 
-func resolveItemByID(id string) (string, string) {
-	info, err := api.GetFileInfo(boxClient, id)
+var BoxClient *client.BoxClient
+
+func ResolveItemByID(id string) (string, string) {
+	info, err := api.GetFileInfo(BoxClient, id)
 	if err == nil {
 		return info.ID, info.Type
 	}
-	fInfo, err := api.GetFolderInfo(boxClient, id)
+	fInfo, err := api.GetFolderInfo(BoxClient, id)
 	if err == nil {
 		return fInfo.ID, fInfo.Type
 	}
@@ -18,14 +21,14 @@ func resolveItemByID(id string) (string, string) {
 	return "", ""
 }
 
-func resolveItem(args []string, idFlag string) (string, string) {
+func ResolveItem(args []string, idFlag string) (string, string) {
 	if idFlag != "" {
-		return resolveItemByID(idFlag)
+		return ResolveItemByID(idFlag)
 	}
 	if len(args) == 0 {
 		u.PrintFatal("cmd", "Must specify a path or --id", nil)
 	}
-	itemID, itemType, err := api.ResolvePath(boxClient, args[0], "")
+	itemID, itemType, err := api.ResolvePath(BoxClient, args[0], "")
 	if err != nil {
 		u.PrintFatal("cmd", "Failed to resolve path", err)
 	}

@@ -1,4 +1,4 @@
-.PHONY: help clean build build-for build-all run tidy version
+.PHONY: help clean build build-for build-all version
 
 # =============================================================================
 # Variables
@@ -46,15 +46,6 @@ build-all: ## Build all platform binaries
 	@$(MAKE) build-for GOOS=darwin GOARCH=arm64
 	@$(MAKE) build-for GOOS=windows GOARCH=amd64
 	@$(MAKE) build-for GOOS=windows GOARCH=arm64
-
-# =============================================================================
-# Development
-# =============================================================================
-run: ## Run with arguments (make run ARGS="list /")
-	@go run . $(ARGS)
-
-tidy: ## Run go mod tidy
-	@go mod tidy
 
 # =============================================================================
 # Version

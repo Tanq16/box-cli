@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/rs/zerolog/log"
 )
 
@@ -36,28 +36,28 @@ func PrintSuccess(pkg, msg string) {
 }
 
 func PrintError(pkg, msg string, err error) {
-	if GlobalDebugFlag && err != nil {
-		log.Error().Str("package", pkg).Err(err).Msg(msg)
-	} else if GlobalForAIFlag {
+	if GlobalDebugFlag {
 		if err != nil {
-			fmt.Printf("[ERROR] %s: %v\n", msg, err)
+			log.Error().Str("package", pkg).Err(err).Msg(msg)
 		} else {
-			fmt.Println("[ERROR] " + msg)
+			log.Error().Str("package", pkg).Msg(msg)
 		}
+	} else if GlobalForAIFlag {
+		fmt.Println("[ERROR] " + msg)
 	} else {
 		fmt.Println(errorStyle.Render("✗ " + msg))
 	}
 }
 
 func PrintFatal(pkg, msg string, err error) {
-	if GlobalDebugFlag && err != nil {
-		log.Error().Str("package", pkg).Err(err).Msg(msg)
-	} else if GlobalForAIFlag {
+	if GlobalDebugFlag {
 		if err != nil {
-			fmt.Printf("[ERROR] %s: %v\n", msg, err)
+			log.Error().Str("package", pkg).Err(err).Msg(msg)
 		} else {
-			fmt.Println("[ERROR] " + msg)
+			log.Error().Str("package", pkg).Msg(msg)
 		}
+	} else if GlobalForAIFlag {
+		fmt.Println("[ERROR] " + msg)
 	} else {
 		fmt.Println(errorStyle.Render("✗ " + msg))
 	}
@@ -65,14 +65,14 @@ func PrintFatal(pkg, msg string, err error) {
 }
 
 func PrintWarn(pkg, msg string, err error) {
-	if GlobalDebugFlag && err != nil {
-		log.Warn().Str("package", pkg).Err(err).Msg(msg)
-	} else if GlobalForAIFlag {
+	if GlobalDebugFlag {
 		if err != nil {
-			fmt.Printf("[WARN] %s: %v\n", msg, err)
+			log.Warn().Str("package", pkg).Err(err).Msg(msg)
 		} else {
-			fmt.Println("[WARN] " + msg)
+			log.Warn().Str("package", pkg).Msg(msg)
 		}
+	} else if GlobalForAIFlag {
+		fmt.Println("[WARN] " + msg)
 	} else {
 		fmt.Println(warnStyle.Render("! " + msg))
 	}

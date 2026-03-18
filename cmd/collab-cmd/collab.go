@@ -1,9 +1,10 @@
-package cmd
+package collabcmd
 
 import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/tanq16/box/cmd/cmdutil"
 	"github.com/tanq16/box/internal/api"
 	"github.com/tanq16/box/internal/types"
 	u "github.com/tanq16/box/utils"
@@ -21,7 +22,7 @@ var collabUpdateFlags struct {
 	status string
 }
 
-var collabCmd = &cobra.Command{
+var CollabCmd = &cobra.Command{
 	Use:   "collab",
 	Short: "Manage collaborations on Box items",
 }
@@ -37,11 +38,12 @@ The most common usage is path + email:
 
 For advanced cases, use --user-id or --group-id instead of a positional email.`,
 	Args: cobra.RangeArgs(0, 2),
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(c *cobra.Command, args []string) {
+		boxClient := cmdutil.BoxClient
 		var itemID, itemType string
 
 		if collabCreateFlags.id != "" {
-			itemID, itemType = resolveItemByID(collabCreateFlags.id)
+			itemID, itemType = cmdutil.ResolveItemByID(collabCreateFlags.id)
 			if len(args) < 1 && collabCreateFlags.userID == "" && collabCreateFlags.groupID == "" {
 				u.PrintFatal("cmd","Must specify an email, --user-id, or --group-id", nil)
 			}
@@ -49,7 +51,7 @@ For advanced cases, use --user-id or --group-id instead of a positional email.`,
 			if len(args) < 1 {
 				u.PrintFatal("cmd","Must specify a path (or use --id)", nil)
 			}
-			itemID, itemType = resolveItem(args[:1], "")
+			itemID, itemType = cmdutil.ResolveItem(args[:1], "")
 
 			if len(args) < 2 && collabCreateFlags.userID == "" && collabCreateFlags.groupID == "" {
 				u.PrintFatal("cmd","Must specify an email, --user-id, or --group-id", nil)
@@ -76,8 +78,8 @@ var collabGetCmd = &cobra.Command{
 	Use:   "get <collab-id>",
 	Short: "Get a collaboration by ID",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		collab, err := api.GetCollaboration(boxClient, args[0])
+	Run: func(c *cobra.Command, args []string) {
+		collab, err := api.GetCollaboration(cmdutil.BoxClient, args[0])
 		if err != nil {
 			u.PrintFatal("cmd","Failed to get collaboration", err)
 		}
@@ -89,8 +91,8 @@ var collabUpdateCmd = &cobra.Command{
 	Use:   "update <collab-id>",
 	Short: "Update a collaboration",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		collab, err := api.UpdateCollaboration(boxClient, args[0], collabUpdateFlags.role, collabUpdateFlags.status)
+	Run: func(c *cobra.Command, args []string) {
+		collab, err := api.UpdateCollaboration(cmdutil.BoxClient, args[0], collabUpdateFlags.role, collabUpdateFlags.status)
 		if err != nil {
 			u.PrintFatal("cmd","Failed to update collaboration", err)
 		}
@@ -103,8 +105,8 @@ var collabDeleteCmd = &cobra.Command{
 	Use:   "delete <collab-id>",
 	Short: "Delete a collaboration",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		if err := api.DeleteCollaboration(boxClient, args[0]); err != nil {
+	Run: func(c *cobra.Command, args []string) {
+		if err := api.DeleteCollaboration(cmdutil.BoxClient, args[0]); err != nil {
 			u.PrintFatal("cmd","Failed to delete collaboration", err)
 		}
 		u.PrintSuccess("cmd","Collaboration deleted")
@@ -114,8 +116,8 @@ var collabDeleteCmd = &cobra.Command{
 var collabPendingCmd = &cobra.Command{
 	Use:   "pending",
 	Short: "List pending collaborations",
-	Run: func(cmd *cobra.Command, args []string) {
-		list, err := api.ListPendingCollaborations(boxClient)
+	Run: func(c *cobra.Command, args []string) {
+		list, err := api.ListPendingCollaborations(cmdutil.BoxClient)
 		if err != nil {
 			u.PrintFatal("cmd","Failed to list pending collaborations", err)
 		}
@@ -165,10 +167,9 @@ func init() {
 	collabUpdateCmd.Flags().StringVarP(&collabUpdateFlags.role, "role", "r", "", "New role")
 	collabUpdateCmd.Flags().StringVarP(&collabUpdateFlags.status, "status", "s", "", "New status (accepted, rejected)")
 
-	collabCmd.AddCommand(collabCreateCmd)
-	collabCmd.AddCommand(collabGetCmd)
-	collabCmd.AddCommand(collabUpdateCmd)
-	collabCmd.AddCommand(collabDeleteCmd)
-	collabCmd.AddCommand(collabPendingCmd)
-	rootCmd.AddCommand(collabCmd)
+	CollabCmd.AddCommand(collabCreateCmd)
+	CollabCmd.AddCommand(collabGetCmd)
+	CollabCmd.AddCommand(collabUpdateCmd)
+	CollabCmd.AddCommand(collabDeleteCmd)
+	CollabCmd.AddCommand(collabPendingCmd)
 }
