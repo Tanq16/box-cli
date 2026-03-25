@@ -11,15 +11,15 @@ import (
 var (
 	headerStyle = lipgloss.NewStyle().
 		Bold(true).
-		Foreground(lipgloss.Color("15")).
+		Foreground(lipgloss.ANSIColor(15)).
 		Padding(0, 1)
 
 	cellStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("7")).
+		Foreground(lipgloss.ANSIColor(7)).
 		Padding(0, 1)
 
 	borderStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("8"))
+		Foreground(lipgloss.ANSIColor(8))
 )
 
 func PrintTable(headers []string, rows [][]string) {

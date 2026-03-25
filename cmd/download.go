@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/tanq16/box/cmd/cmdutil"
 	"github.com/tanq16/box/internal/api"
 	u "github.com/tanq16/box/utils"
 )
@@ -24,7 +25,7 @@ var downloadCmd = &cobra.Command{
 		var remotePath string
 
 		if downloadFlags.fileID != "" {
-			itemID, itemType = resolveItemByID(downloadFlags.fileID)
+			itemID, itemType = cmdutil.ResolveItemByID(downloadFlags.fileID)
 			if len(args) > 0 {
 				remotePath = args[0]
 			}

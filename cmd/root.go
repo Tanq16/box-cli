@@ -35,7 +35,7 @@ var rootCmd = &cobra.Command{
 		if cmd.Name() == "login" {
 			return
 		}
-		httpClient, err := auth.GetClient()
+		httpClient, err := auth.GetHTTPClient()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)

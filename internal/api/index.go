@@ -62,10 +62,7 @@ func GenerateIndex(c *client.BoxClient, rootPath string) error {
 }
 
 func saveIndex(rootPath string, items []types.IndexItem) error {
-	dir, err := auth.ConfigDir()
-	if err != nil {
-		return err
-	}
+	dir := auth.ConfigDir()
 	store := types.IndexStore{
 		Provider:  "box",
 		RootPath:  rootPath,
@@ -85,10 +82,7 @@ func saveIndex(rootPath string, items []types.IndexItem) error {
 }
 
 func loadIndex() (*types.IndexStore, error) {
-	dir, err := auth.ConfigDir()
-	if err != nil {
-		return nil, err
-	}
+	dir := auth.ConfigDir()
 	p := filepath.Join(dir, "index.json")
 	data, err := os.ReadFile(p)
 	if err != nil {

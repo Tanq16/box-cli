@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/tanq16/box/cmd/cmdutil"
 	"github.com/tanq16/box/internal/api"
 	u "github.com/tanq16/box/utils"
 )
@@ -18,7 +19,7 @@ var infoCmd = &cobra.Command{
 	Short: "Show metadata for a file or folder on Box",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		itemID, itemType := resolveItem(args, infoFlags.itemID)
+		itemID, itemType := cmdutil.ResolveItem(args, infoFlags.itemID)
 
 		if itemType == "folder" {
 			info, err := api.GetFolderInfo(boxClient, itemID)

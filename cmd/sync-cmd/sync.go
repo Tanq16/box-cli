@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/box/cmd/cmdutil"
@@ -40,11 +42,61 @@ var syncPushCmd = &cobra.Command{
 		defer stop()
 
 		ignore := parseIgnore(syncFlags.ignore)
-		u.PrintInfo("cmd", fmt.Sprintf("Syncing push: %s → %s (concurrency: %d)", localDir, remotePath, syncFlags.concurrency))
-		if err := api.SyncPush(ctx, cmdutil.BoxClient, localDir, remotePath, syncFlags.concurrency, ignore); err != nil {
+
+		u.PrintRunning("cmd", "Scanning files...")
+		plan, err := api.PlanPush(ctx, cmdutil.BoxClient, localDir, remotePath, ignore)
+		if err != nil {
+			u.ClearLines(1)
 			u.PrintFatal("cmd", "Sync push failed", err)
 		}
-		u.PrintSuccess("cmd", "Sync push complete")
+		u.ClearLines(1)
+
+		if plan.Total == 0 {
+			u.PrintSuccess("cmd", "Already in sync")
+			return
+		}
+
+		u.PrintRunning("cmd", fmt.Sprintf("Syncing push: %d to upload, %d to update, %d to delete", plan.Add, plan.Update, plan.Delete))
+
+		progress := &api.SyncProgress{}
+		done := make(chan struct{})
+		var printed atomic.Bool
+		go func() {
+			ticker := time.NewTicker(500 * time.Millisecond)
+			defer ticker.Stop()
+			firstTick := true
+			for {
+				select {
+				case <-done:
+					return
+				case <-ticker.C:
+					if !firstTick {
+						u.ClearPreviousLine()
+					}
+					firstTick = false
+					printed.Store(true)
+					pct := int(progress.Completed.Load()) * 100 / plan.Total
+					u.PrintProgress("Syncing", pct)
+				}
+			}
+		}()
+
+		err = api.ExecPush(ctx, cmdutil.BoxClient, plan, syncFlags.concurrency, progress)
+		close(done)
+		if printed.Load() {
+			u.ClearPreviousLine()
+		}
+
+		if err != nil {
+			u.PrintFatal("cmd", "Sync push failed", err)
+		}
+
+		errors := int(progress.Errors.Load())
+		if errors > 0 {
+			u.PrintWarn("cmd", fmt.Sprintf("Sync push complete with %d errors (use --debug for details)", errors), nil)
+		} else {
+			u.PrintSuccess("cmd", "Sync push complete")
+		}
 	},
 }
 
@@ -60,11 +112,61 @@ var syncPullCmd = &cobra.Command{
 		defer stop()
 
 		ignore := parseIgnore(syncFlags.ignore)
-		u.PrintInfo("cmd", fmt.Sprintf("Syncing pull: %s → %s (concurrency: %d)", remotePath, localDir, syncFlags.concurrency))
-		if err := api.SyncPull(ctx, cmdutil.BoxClient, remotePath, localDir, syncFlags.concurrency, ignore); err != nil {
+
+		u.PrintRunning("cmd", "Scanning files...")
+		plan, err := api.PlanPull(ctx, cmdutil.BoxClient, remotePath, localDir, ignore)
+		if err != nil {
+			u.ClearLines(1)
 			u.PrintFatal("cmd", "Sync pull failed", err)
 		}
-		u.PrintSuccess("cmd", "Sync pull complete")
+		u.ClearLines(1)
+
+		if plan.Total == 0 {
+			u.PrintSuccess("cmd", "Already in sync")
+			return
+		}
+
+		u.PrintRunning("cmd", fmt.Sprintf("Syncing pull: %d to download, %d to update, %d to delete", plan.Add, plan.Update, plan.Delete))
+
+		progress := &api.SyncProgress{}
+		done := make(chan struct{})
+		var printed atomic.Bool
+		go func() {
+			ticker := time.NewTicker(500 * time.Millisecond)
+			defer ticker.Stop()
+			firstTick := true
+			for {
+				select {
+				case <-done:
+					return
+				case <-ticker.C:
+					if !firstTick {
+						u.ClearPreviousLine()
+					}
+					firstTick = false
+					printed.Store(true)
+					pct := int(progress.Completed.Load()) * 100 / plan.Total
+					u.PrintProgress("Syncing", pct)
+				}
+			}
+		}()
+
+		err = api.ExecPull(ctx, cmdutil.BoxClient, plan, syncFlags.concurrency, progress)
+		close(done)
+		if printed.Load() {
+			u.ClearPreviousLine()
+		}
+
+		if err != nil {
+			u.PrintFatal("cmd", "Sync pull failed", err)
+		}
+
+		errors := int(progress.Errors.Load())
+		if errors > 0 {
+			u.PrintWarn("cmd", fmt.Sprintf("Sync pull complete with %d errors (use --debug for details)", errors), nil)
+		} else {
+			u.PrintSuccess("cmd", "Sync pull complete")
+		}
 	},
 }
 

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/tanq16/box/cmd/cmdutil"
 	"github.com/tanq16/box/internal/api"
 	u "github.com/tanq16/box/utils"
 )
@@ -15,7 +16,7 @@ var deleteCmd = &cobra.Command{
 	Short: "Delete a file or folder on Box",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		itemID, itemType := resolveItem(args, deleteFlags.itemID)
+		itemID, itemType := cmdutil.ResolveItem(args, deleteFlags.itemID)
 
 		if itemType == "folder" {
 			if err := api.DeleteFolder(boxClient, itemID); err != nil {

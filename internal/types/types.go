@@ -2,11 +2,6 @@ package types
 
 import "time"
 
-type BoxCredentials struct {
-	ClientID     string `json:"client_id"`
-	ClientSecret string `json:"client_secret"`
-}
-
 type BoxItem struct {
 	Type           string          `json:"type"`
 	ID             string          `json:"id"`

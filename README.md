@@ -51,8 +51,8 @@ make build
 2. Save your credentials:
 
 ```bash
-mkdir -p ~/.box
-cat > ~/.box/credentials.json <<EOF
+mkdir -p ~/.config/box
+cat > ~/.config/box/credentials.json <<EOF
 {
   "client_id": "YOUR_CLIENT_ID",
   "client_secret": "YOUR_CLIENT_SECRET"
@@ -60,10 +60,11 @@ cat > ~/.box/credentials.json <<EOF
 EOF
 ```
 
-3. Authenticate:
+3. Authenticate (opens browser automatically):
 
 ```bash
 box login
+box login --manual   # paste code manually if browser doesn't work
 ```
 
 ### File Operations
@@ -202,6 +203,7 @@ box collab pending
 ## Tips and Notes
 
 - Use `--debug` flag on any command for detailed logging output
+- Use `--for-ai` flag for plain-text output suitable for piping or AI consumption
 - Files over 50MB are automatically uploaded via chunked upload
 - Sync uses SHA1 hashes to detect changes efficiently
 - Use `--concurrency` flag with sync commands to control parallelism (default: 4)
