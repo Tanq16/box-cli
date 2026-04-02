@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"github.com/tanq16/box/internal/client"
 	"github.com/tanq16/box/internal/types"
 )
@@ -158,15 +159,15 @@ func UploadFolder(c *client.BoxClient, localPath string, parentFolderID string) 
 		if d.IsDir() {
 			boxFolderID, err := FindOrCreateFolder(c, d.Name(), parentBoxID)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to create folder '%s': %v\n", d.Name(), err)
+				log.Debug().Err(err).Str("folder", d.Name()).Msg("failed to create folder")
 				return filepath.SkipDir
 			}
 			folderIDMap[currentPath] = boxFolderID
 		} else {
 			if err := UploadFile(c, currentPath, parentBoxID); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to upload '%s': %v\n", currentPath, err)
+				log.Debug().Err(err).Str("file", currentPath).Msg("failed to upload")
 			} else {
-				fmt.Fprintf(os.Stderr, "Uploaded: %s\n", currentPath)
+				log.Debug().Str("file", currentPath).Msg("uploaded")
 			}
 		}
 		return nil
@@ -222,16 +223,16 @@ func DownloadFolder(c *client.BoxClient, folderID string, localPath string) erro
 		destPath := filepath.Join(localPath, file.Name)
 		_, err := DownloadFile(c, file.ID, destPath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to download '%s': %v\n", file.Name, err)
+			log.Debug().Err(err).Str("file", file.Name).Msg("failed to download")
 		} else {
-			fmt.Fprintf(os.Stderr, "Downloaded: %s\n", destPath)
+			log.Debug().Str("file", destPath).Msg("downloaded")
 		}
 	}
 
 	for _, folder := range folders {
 		destPath := filepath.Join(localPath, folder.Name)
 		if err := DownloadFolder(c, folder.ID, destPath); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to download folder '%s': %v\n", folder.Name, err)
+			log.Debug().Err(err).Str("folder", folder.Name).Msg("failed to download folder")
 		}
 	}
 	return nil

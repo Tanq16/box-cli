@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/tanq16/box/internal/client"
 	"github.com/tanq16/box/internal/types"
 )
@@ -36,7 +37,7 @@ func UploadFileChunked(c *client.BoxClient, localPath string, parentFolderID str
 		return fmt.Errorf("failed to create upload session: %w", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "Upload session created: %d parts of %d bytes each\n", session.TotalParts, session.PartSize)
+	log.Debug().Int("total_parts", session.TotalParts).Int64("part_size", session.PartSize).Msg("upload session created")
 
 	file.Seek(0, io.SeekStart)
 	wholeFileHash := sha1.New()
@@ -69,7 +70,7 @@ func UploadFileChunked(c *client.BoxClient, localPath string, parentFolderID str
 		parts = append(parts, *part)
 		offset += int64(n)
 
-		fmt.Fprintf(os.Stderr, "Uploaded part %d/%d\n", partNum+1, session.TotalParts)
+		log.Debug().Int("part", partNum+1).Int("total", session.TotalParts).Msg("uploaded part")
 	}
 
 	wholeDigest := base64.StdEncoding.EncodeToString(wholeFileHash.Sum(nil))
@@ -78,13 +79,53 @@ func UploadFileChunked(c *client.BoxClient, localPath string, parentFolderID str
 		return fmt.Errorf("failed to commit upload: %w", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "Chunked upload complete.\n")
+	log.Debug().Msg("chunked upload complete")
 	return nil
 }
 
 func createUploadSession(c *client.BoxClient, fileName string, folderID string, fileSize int64) (*types.UploadSession, error) {
 	body := fmt.Sprintf(`{"folder_id":%q,"file_size":%d,"file_name":%q}`, folderID, fileSize, fileName)
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/files/upload_sessions", client.UploadBaseURL), bytes.NewBufferString(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusConflict {
+		var conflictErr struct {
+			ContextInfo struct {
+				Conflicts []types.BoxItem `json:"conflicts"`
+			} `json:"context_info"`
+		}
+		respBody, _ := io.ReadAll(resp.Body)
+		if json.Unmarshal(respBody, &conflictErr) == nil && len(conflictErr.ContextInfo.Conflicts) > 0 {
+			existingID := conflictErr.ContextInfo.Conflicts[0].ID
+			log.Debug().Str("existing_id", existingID).Msg("file exists, creating version upload session")
+			return createVersionUploadSession(c, existingID, fileSize)
+		}
+		return nil, fmt.Errorf("upload session conflict for '%s'", fileName)
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		return nil, client.HandleError("create upload session", resp)
+	}
+
+	var session types.UploadSession
+	if err := json.NewDecoder(resp.Body).Decode(&session); err != nil {
+		return nil, fmt.Errorf("failed to decode upload session: %w", err)
+	}
+	return &session, nil
+}
+
+func createVersionUploadSession(c *client.BoxClient, fileID string, fileSize int64) (*types.UploadSession, error) {
+	body := fmt.Sprintf(`{"file_size":%d}`, fileSize)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/files/%s/upload_sessions", client.UploadBaseURL, fileID), bytes.NewBufferString(body))
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +197,7 @@ func commitUploadSession(c *client.BoxClient, sessionID string, parts []types.Up
 					wait = v
 				}
 			}
-			fmt.Fprintf(os.Stderr, "Commit pending, retrying in %ds...\n", wait)
+			log.Debug().Int("wait_seconds", wait).Msg("commit pending, retrying")
 			time.Sleep(time.Duration(wait) * time.Second)
 			continue
 		}

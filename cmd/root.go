@@ -14,7 +14,7 @@ import (
 	synccmd "github.com/tanq16/box/cmd/sync-cmd"
 	"github.com/tanq16/box/internal/auth"
 	"github.com/tanq16/box/internal/client"
-	"github.com/tanq16/box/utils"
+	u "github.com/tanq16/box/utils"
 )
 
 var AppVersion = "dev-build"
@@ -37,8 +37,7 @@ var rootCmd = &cobra.Command{
 		}
 		httpClient, err := auth.GetHTTPClient()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			u.PrintFatal("cmd", "failed to authenticate — run 'box login' first", err)
 		}
 		boxClient = client.New(httpClient)
 		cmdutil.BoxClient = boxClient
@@ -63,10 +62,10 @@ func setupLogs() {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if debugFlag {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-		utils.GlobalDebugFlag = true
+		u.GlobalDebugFlag = true
 	}
 	if forAIFlag {
-		utils.GlobalForAIFlag = true
+		u.GlobalForAIFlag = true
 		zerolog.SetGlobalLevel(zerolog.Disabled)
 	}
 }
@@ -78,9 +77,9 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&forAIFlag, "for-ai", false, "AI-friendly output (plain text, piped input)")
 	rootCmd.MarkFlagsMutuallyExclusive("debug", "for-ai")
 
+	cobra.OnInitialize(setupLogs)
+
 	rootCmd.AddCommand(collabcmd.CollabCmd)
 	rootCmd.AddCommand(sharedlinkcmd.SharedLinkCmd)
 	rootCmd.AddCommand(synccmd.SyncCmd)
-
-	cobra.OnInitialize(setupLogs)
 }

@@ -35,29 +35,35 @@ var uploadCmd = &cobra.Command{
 		}
 
 		if info.IsDir() {
-			u.PrintInfo("cmd",fmt.Sprintf("Uploading folder '%s' to '%s'...", localPath, remotePath))
+			u.PrintRunning("cmd", fmt.Sprintf("Uploading folder '%s' to '%s'...", localPath, remotePath))
 			if err := api.UploadFolder(boxClient, localPath, parentFolderID); err != nil {
-				u.PrintFatal("cmd","Folder upload failed", err)
+				u.ClearLines(1)
+				u.PrintFatal("cmd", "Folder upload failed", err)
 			}
-			u.PrintSuccess("cmd","Folder upload complete")
+			u.ClearLines(1)
+			u.PrintSuccess("cmd", "Folder upload complete")
 			return
 		}
 
 		const chunkedThreshold = 50 * 1024 * 1024
 		if uploadFlags.chunked || info.Size() > chunkedThreshold {
-			u.PrintInfo("cmd",fmt.Sprintf("Uploading '%s' via chunked upload (%s)...", localPath, u.FormatSize(info.Size())))
+			u.PrintRunning("cmd", fmt.Sprintf("Uploading '%s' via chunked upload (%s)...", localPath, u.FormatSize(info.Size())))
 			if err := api.UploadFileChunked(boxClient, localPath, parentFolderID); err != nil {
-				u.PrintFatal("cmd","Chunked upload failed", err)
+				u.ClearLines(1)
+				u.PrintFatal("cmd", "Chunked upload failed", err)
 			}
-			u.PrintSuccess("cmd","Upload complete")
+			u.ClearLines(1)
+			u.PrintSuccess("cmd", "Upload complete")
 			return
 		}
 
-		u.PrintInfo("cmd",fmt.Sprintf("Uploading '%s' to '%s'...", localPath, remotePath))
+		u.PrintRunning("cmd", fmt.Sprintf("Uploading '%s' to '%s'...", localPath, remotePath))
 		if err := api.UploadFile(boxClient, localPath, parentFolderID); err != nil {
-			u.PrintFatal("cmd","Upload failed", err)
+			u.ClearLines(1)
+			u.PrintFatal("cmd", "Upload failed", err)
 		}
-		u.PrintSuccess("cmd","Upload complete")
+		u.ClearLines(1)
+		u.PrintSuccess("cmd", "Upload complete")
 	},
 }
 

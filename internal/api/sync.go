@@ -21,10 +21,10 @@ import (
 
 type SyncPlan struct {
 	Add     int // new files to upload (push) or download (pull)
-	Update  int // changed files
-	Delete  int // files to remove
-	Folders int // folders to create/remove
-	Total   int // total operations
+	Update  int
+	Delete  int
+	Folders int
+	Total   int
 
 	localTree      *types.FileTree
 	remoteTree     *types.FileTree
@@ -50,21 +50,6 @@ func computeLocalHash(filePath string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-func getRemoteFileHash(c *client.BoxClient, fileID string) (string, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/files/%s", client.APIBaseURL, fileID), nil)
-	if err != nil {
-		return "", err
-	}
-	q := req.URL.Query()
-	q.Add("fields", "sha1")
-	req.URL.RawQuery = q.Encode()
-
-	var file struct {
-		SHA1 string `json:"sha1"`
-	}
-	_, err = c.DoJSON(req, &file)
-	return file.SHA1, err
-}
 
 func BuildLocalTree(rootDir string, ignoreSet map[string]struct{}) (*types.FileTree, error) {
 	tree := &types.FileTree{
@@ -104,6 +89,7 @@ func BuildLocalTree(rootDir string, ignoreSet map[string]struct{}) (*types.FileT
 		} else {
 			hash, err := computeLocalHash(path)
 			if err != nil {
+				log.Debug().Err(err).Str("file", path).Msg("failed to compute hash, skipping")
 				return nil
 			}
 			parts := strings.Split(relPath, string(filepath.Separator))
@@ -131,6 +117,7 @@ func BuildLocalTree(rootDir string, ignoreSet map[string]struct{}) (*types.FileT
 
 func BuildRemoteTree(c *client.BoxClient, folderID string, basePath string, ignoreSet map[string]struct{}) (*types.FileTree, error) {
 	tree := &types.FileTree{
+		ID:    folderID,
 		Files: make(map[string]types.FileInfo),
 		Dirs:  make(map[string]*types.FileTree),
 	}
@@ -143,7 +130,7 @@ func BuildRemoteTree(c *client.BoxClient, folderID string, basePath string, igno
 			return nil, err
 		}
 		q := req.URL.Query()
-		q.Add("fields", "type,name,id")
+		q.Add("fields", "type,name,id,sha1")
 		q.Add("limit", fmt.Sprintf("%d", limit))
 		q.Add("offset", fmt.Sprintf("%d", offset))
 		req.URL.RawQuery = q.Encode()
@@ -153,7 +140,10 @@ func BuildRemoteTree(c *client.BoxClient, folderID string, basePath string, igno
 			return nil, err
 		}
 		var items types.BoxFolderItems
-		json.NewDecoder(resp.Body).Decode(&items)
+		if err := json.NewDecoder(resp.Body).Decode(&items); err != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("failed to parse response: %w", err)
+		}
 		resp.Body.Close()
 
 		for _, item := range items.Entries {
@@ -164,12 +154,12 @@ func BuildRemoteTree(c *client.BoxClient, folderID string, basePath string, igno
 			if item.Type == "folder" {
 				subTree, err := BuildRemoteTree(c, item.ID, itemPath, ignoreSet)
 				if err != nil {
+					log.Debug().Err(err).Str("folder", item.Name).Msg("failed to build remote subtree, skipping")
 					continue
 				}
 				tree.Dirs[item.Name] = subTree
 			} else {
-				hash, _ := getRemoteFileHash(c, item.ID)
-				tree.Files[item.Name] = types.FileInfo{Path: itemPath, Hash: hash, ID: item.ID}
+				tree.Files[item.Name] = types.FileInfo{Path: itemPath, Hash: item.SHA1, ID: item.ID}
 			}
 		}
 		offset += len(items.Entries)
@@ -359,7 +349,7 @@ func execPushTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, l
 			}
 			progress.Completed.Add(1)
 		} else {
-			subFolderID = getFolderIDFromRemote(c, remoteFolderID, name)
+			subFolderID = remoteSubTree.ID
 		}
 
 		execPushTree(ctx, g, c, localSubTree, remoteSubTree, subLocalDir, subFolderID, progress)
@@ -367,7 +357,7 @@ func execPushTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, l
 
 	for name := range remote.Dirs {
 		if _, exists := local.Dirs[name]; !exists {
-			folderID := getFolderIDFromRemote(c, remoteFolderID, name)
+			folderID := remote.Dirs[name].ID
 			if folderID != "" {
 				if err := DeleteFolder(c, folderID); err != nil {
 					log.Debug().Err(err).Str("folder", name).Msg("failed to delete remote folder")
@@ -462,7 +452,7 @@ func execPullTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, r
 		}
 		localSubTree, exists := local.Dirs[name]
 		subLocalDir := filepath.Join(localDir, name)
-		subFolderID := getFolderIDFromRemote(c, remoteFolderID, name)
+		subFolderID := remoteSubTree.ID
 
 		if !exists {
 			localSubTree = &types.FileTree{
@@ -484,41 +474,6 @@ func execPullTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, r
 			progress.Completed.Add(1)
 		}
 	}
-}
-
-func getFolderIDFromRemote(c *client.BoxClient, parentFolderID string, folderName string) string {
-	offset := 0
-	limit := 1000
-	for {
-		req, err := http.NewRequest("GET", fmt.Sprintf("%s/folders/%s/items", client.APIBaseURL, parentFolderID), nil)
-		if err != nil {
-			return ""
-		}
-		q := req.URL.Query()
-		q.Add("fields", "type,name,id")
-		q.Add("limit", fmt.Sprintf("%d", limit))
-		q.Add("offset", fmt.Sprintf("%d", offset))
-		req.URL.RawQuery = q.Encode()
-
-		resp, err := c.Do(req)
-		if err != nil {
-			return ""
-		}
-		var items types.BoxFolderItems
-		json.NewDecoder(resp.Body).Decode(&items)
-		resp.Body.Close()
-
-		for _, item := range items.Entries {
-			if strings.EqualFold(item.Name, folderName) && item.Type == "folder" {
-				return item.ID
-			}
-		}
-		offset += len(items.Entries)
-		if offset >= items.TotalCount || len(items.Entries) == 0 {
-			break
-		}
-	}
-	return ""
 }
 
 func makeIgnoreSet(ignore []string) map[string]struct{} {

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/tanq16/box/internal/auth"
 	"github.com/tanq16/box/internal/client"
 	"github.com/tanq16/box/internal/types"
@@ -42,7 +43,7 @@ func GenerateIndex(c *client.BoxClient, rootPath string) error {
 			})
 			if f.ID != "" {
 				if err := crawl(f.ID, fullPath); err != nil {
-					fmt.Fprintf(os.Stderr, "Warning: error crawling '%s': %v\n", fullPath, err)
+					log.Debug().Err(err).Str("path", fullPath).Msg("error crawling folder")
 				}
 			}
 		}
@@ -53,11 +54,11 @@ func GenerateIndex(c *client.BoxClient, rootPath string) error {
 	if startPath == "" || startPath == "/" {
 		startPath = "/"
 	}
-	fmt.Fprintf(os.Stderr, "Indexing from '%s'...\n", startPath)
+	log.Debug().Str("path", startPath).Msg("indexing started")
 	if err := crawl(folderID, startPath); err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stderr, "Indexed %d items.\n", len(items))
+	log.Debug().Int("items", len(items)).Msg("indexing complete")
 	return saveIndex(rootPath, items)
 }
 
@@ -77,7 +78,7 @@ func saveIndex(rootPath string, items []types.IndexItem) error {
 	if err := os.WriteFile(p, data, 0644); err != nil {
 		return fmt.Errorf("failed to write index: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "Index saved to %s\n", p)
+	log.Debug().Str("path", p).Msg("index saved")
 	return nil
 }
 

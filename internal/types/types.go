@@ -71,6 +71,7 @@ type UploadPartResponse struct {
 }
 
 type FileTree struct {
+	ID    string // Box folder ID (populated for remote trees)
 	Files map[string]FileInfo
 	Dirs  map[string]*FileTree
 }

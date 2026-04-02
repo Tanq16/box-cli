@@ -179,7 +179,10 @@ func FindOrCreateFolder(c *client.BoxClient, folderName string, parentID string)
 			return "", err
 		}
 		var items types.BoxFolderItems
-		json.NewDecoder(resp.Body).Decode(&items)
+		if err := json.NewDecoder(resp.Body).Decode(&items); err != nil {
+			resp.Body.Close()
+			return "", fmt.Errorf("failed to parse response: %w", err)
+		}
 		resp.Body.Close()
 
 		for _, item := range items.Entries {
@@ -208,7 +211,9 @@ func FindOrCreateFolder(c *client.BoxClient, folderName string, parentID string)
 		return "", client.HandleError("create folder", resp)
 	}
 	var folder types.BoxItem
-	json.NewDecoder(resp.Body).Decode(&folder)
+	if err := json.NewDecoder(resp.Body).Decode(&folder); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
 	return folder.ID, nil
 }
 
@@ -245,7 +250,9 @@ func CreateFolder(c *client.BoxClient, folderName string, parentID string) (*typ
 		return nil, client.HandleError("create folder", resp)
 	}
 	var folder types.BoxItem
-	json.NewDecoder(resp.Body).Decode(&folder)
+	if err := json.NewDecoder(resp.Body).Decode(&folder); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
 	return &folder, nil
 }
 
@@ -296,7 +303,10 @@ func CopyFile(c *client.BoxClient, fileID string, destFolderID string, newName s
 	if newName != "" {
 		bodyMap["name"] = newName
 	}
-	bodyBytes, _ := json.Marshal(bodyMap)
+	bodyBytes, err := json.Marshal(bodyMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request body: %w", err)
+	}
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/files/%s/copy", client.APIBaseURL, fileID), bytes.NewBuffer(bodyBytes))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -318,7 +328,10 @@ func CopyFolder(c *client.BoxClient, folderID string, destFolderID string, newNa
 	if newName != "" {
 		bodyMap["name"] = newName
 	}
-	bodyBytes, _ := json.Marshal(bodyMap)
+	bodyBytes, err := json.Marshal(bodyMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request body: %w", err)
+	}
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/folders/%s/copy", client.APIBaseURL, folderID), bytes.NewBuffer(bodyBytes))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)

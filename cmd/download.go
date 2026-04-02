@@ -60,11 +60,13 @@ var downloadCmd = &cobra.Command{
 			if localPath == "" {
 				localPath = "downloaded_folder"
 			}
-			u.PrintInfo("cmd",fmt.Sprintf("Downloading folder to '%s'...", localPath))
+			u.PrintRunning("cmd", fmt.Sprintf("Downloading folder to '%s'...", localPath))
 			if err := api.DownloadFolder(boxClient, itemID, localPath); err != nil {
-				u.PrintFatal("cmd","Folder download failed", err)
+				u.ClearLines(1)
+				u.PrintFatal("cmd", "Folder download failed", err)
 			}
-			u.PrintSuccess("cmd",fmt.Sprintf("Downloaded to: %s", localPath))
+			u.ClearLines(1)
+			u.PrintSuccess("cmd", fmt.Sprintf("Downloaded to: %s", localPath))
 			return
 		}
 
@@ -77,16 +79,20 @@ var downloadCmd = &cobra.Command{
 
 		if localPath != "" {
 			if dir := filepath.Dir(localPath); dir != "." {
-				os.MkdirAll(dir, 0755)
+				if err := os.MkdirAll(dir, 0755); err != nil {
+					u.PrintFatal("cmd", fmt.Sprintf("Failed to create directory '%s'", filepath.Dir(localPath)), err)
+				}
 			}
 		}
 
-		u.PrintInfo("cmd","Downloading file...")
+		u.PrintRunning("cmd", "Downloading file...")
 		savedPath, err := api.DownloadFile(boxClient, itemID, localPath)
 		if err != nil {
-			u.PrintFatal("cmd","Download failed", err)
+			u.ClearLines(1)
+			u.PrintFatal("cmd", "Download failed", err)
 		}
-		u.PrintSuccess("cmd",fmt.Sprintf("Downloaded to: %s", savedPath))
+		u.ClearLines(1)
+		u.PrintSuccess("cmd", fmt.Sprintf("Downloaded to: %s", savedPath))
 	},
 }
 

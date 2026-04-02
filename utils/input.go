@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 )
@@ -123,4 +124,64 @@ func PromptPassword(prompt string) (string, error) {
 
 	result := finalModel.(inputModel)
 	return result.value, nil
+}
+
+type textAreaModel struct {
+	textarea textarea.Model
+	done     bool
+	value    string
+}
+
+func (m textAreaModel) Init() tea.Cmd {
+	return textarea.Blink
+}
+
+func (m textAreaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyPressMsg:
+		switch msg.String() {
+		case "ctrl+d":
+			m.value = m.textarea.Value()
+			m.done = true
+			return m, tea.Quit
+		case "ctrl+c", "esc":
+			m.done = true
+			return m, tea.Quit
+		}
+	}
+
+	m.textarea, cmd = m.textarea.Update(msg)
+	return m, cmd
+}
+
+func (m textAreaModel) View() tea.View {
+	if m.done {
+		return tea.NewView("")
+	}
+	return tea.NewView(m.textarea.View() + "\n(Ctrl+D to submit, Esc to cancel)")
+}
+
+func PromptTextArea(prompt string, placeholder string) (string, error) {
+	if GlobalForAIFlag {
+		return ReadPipedInput(), nil
+	}
+
+	PrintInfo("cmd", prompt)
+
+	ta := textarea.New()
+	ta.Placeholder = placeholder
+	ta.Focus()
+
+	m := textAreaModel{textarea: ta}
+	p := tea.NewProgram(m)
+
+	finalModel, err := p.Run()
+	if err != nil {
+		return "", err
+	}
+
+	result := finalModel.(textAreaModel)
+	return strings.TrimSpace(result.value), nil
 }

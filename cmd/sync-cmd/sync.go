@@ -86,6 +86,7 @@ var syncPushCmd = &cobra.Command{
 		if printed.Load() {
 			u.ClearPreviousLine()
 		}
+		u.ClearLines(1)
 
 		if err != nil {
 			u.PrintFatal("cmd", "Sync push failed", err)
@@ -156,6 +157,7 @@ var syncPullCmd = &cobra.Command{
 		if printed.Load() {
 			u.ClearPreviousLine()
 		}
+		u.ClearLines(1)
 
 		if err != nil {
 			u.PrintFatal("cmd", "Sync pull failed", err)

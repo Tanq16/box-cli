@@ -103,6 +103,30 @@ func PrintIndentedSuccess(pkg, msg string) {
 	}
 }
 
+func PrintIndentedWarn(pkg, msg string, err error) {
+	if GlobalDebugFlag {
+		if err != nil {
+			log.Warn().Str("package", pkg).Err(err).Msg(msg)
+		} else {
+			log.Warn().Str("package", pkg).Msg(msg)
+		}
+	} else if GlobalForAIFlag {
+		fmt.Println("[WARN] " + msg)
+	} else {
+		fmt.Println(warnStyle.Render("  ! " + msg))
+	}
+}
+
+func PrintIndentedRunning(pkg, msg string) {
+	if GlobalDebugFlag {
+		log.Info().Str("package", pkg).Msg(msg)
+	} else if GlobalForAIFlag {
+		fmt.Println("[RUNNING] " + msg)
+	} else {
+		fmt.Println(infoStyle.Render("  ↻ " + msg))
+	}
+}
+
 func PrintIndentedError(pkg, msg string, err error) {
 	if GlobalDebugFlag {
 		if err != nil {

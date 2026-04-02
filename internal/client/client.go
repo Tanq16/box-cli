@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/tanq16/box/internal/types"
 )
 
@@ -47,7 +48,7 @@ func (c *BoxClient) Do(req *http.Request) (*http.Response, error) {
 			}
 		}
 		if attempt < maxRetries {
-			fmt.Printf("Rate limited, retrying in %v...\n", wait)
+			log.Debug().Dur("wait", wait).Msg("rate limited, retrying")
 			time.Sleep(wait)
 		}
 	}
