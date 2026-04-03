@@ -2,7 +2,7 @@
   <img src=".github/assets/logo.svg" alt="Box Logo" width="200">
   <h1>Box</h1>
 
-  <a href="https://github.com/tanq16/box/actions/workflows/release.yaml"><img alt="Build Workflow" src="https://github.com/tanq16/box/actions/workflows/release.yaml/badge.svg"></a>&nbsp;<a href="https://github.com/tanq16/box/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/tanq16/box"></a><br><br>
+  <a href="https://github.com/tanq16/box-cli/actions/workflows/release.yaml"><img alt="Build Workflow" src="https://github.com/tanq16/box-cli/actions/workflows/release.yaml/badge.svg"></a>&nbsp;<a href="https://github.com/tanq16/box-cli/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/tanq16/box-cli"></a><br><br>
   <a href="#capabilities">Capabilities</a> &bull; <a href="#installation">Installation</a> &bull; <a href="#usage">Usage</a> &bull; <a href="#tips-and-notes">Tips & Notes</a>
 </div>
 
@@ -26,11 +26,11 @@ A CLI tool for Box.com file operations. Single binary, cross-platform, built wit
 
 ### Binary
 
-Download from [releases](https://github.com/tanq16/box/releases):
+Download from [releases](https://github.com/tanq16/box-cli/releases):
 
 ```bash
 # Linux/macOS
-curl -sL https://github.com/tanq16/box/releases/latest/download/box-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m) -o box
+curl -sL https://github.com/tanq16/box-cli/releases/latest/download/box-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m) -o box
 chmod +x box
 sudo mv box /usr/local/bin/
 ```
@@ -38,7 +38,7 @@ sudo mv box /usr/local/bin/
 ### Build from Source
 
 ```bash
-git clone https://github.com/tanq16/box
+git clone https://github.com/tanq16/box-cli
 cd box
 make build
 ```
