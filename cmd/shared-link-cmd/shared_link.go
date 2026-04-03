@@ -1,8 +1,6 @@
 package sharedlinkcmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"github.com/tanq16/box/cmd/cmdutil"
 	"github.com/tanq16/box/internal/api"
@@ -28,16 +26,20 @@ var slCreateCmd = &cobra.Command{
 		itemID, itemType := cmdutil.ResolveItem(args, slFlags.itemID)
 		item, err := api.CreateSharedLink(cmdutil.BoxClient, itemType, itemID, slFlags.access, slFlags.password)
 		if err != nil {
-			u.PrintFatal("cmd","Failed to create shared link", err)
+			u.PrintFatal("cmd", "Failed to create shared link", err)
 		}
 		if item.SharedLink != nil {
-			u.PrintGeneric(fmt.Sprintf("URL:    %s", item.SharedLink.URL))
-			u.PrintGeneric(fmt.Sprintf("Access: %s", item.SharedLink.Access))
-			if item.SharedLink.IsPasswordEnabled {
-				u.PrintGeneric("Password: enabled")
+			headers := []string{"FIELD", "VALUE"}
+			rows := [][]string{
+				{"URL", item.SharedLink.URL},
+				{"Access", item.SharedLink.Access},
 			}
+			if item.SharedLink.IsPasswordEnabled {
+				rows = append(rows, []string{"Password", "enabled"})
+			}
+			u.PrintTable(headers, rows)
 		}
-		u.PrintSuccess("cmd","Shared link created")
+		u.PrintSuccess("cmd", "Shared link created")
 	},
 }
 
@@ -49,17 +51,21 @@ var slGetCmd = &cobra.Command{
 		itemID, itemType := cmdutil.ResolveItem(args, slFlags.itemID)
 		item, err := api.GetSharedLink(cmdutil.BoxClient, itemType, itemID)
 		if err != nil {
-			u.PrintFatal("cmd","Failed to get shared link", err)
+			u.PrintFatal("cmd", "Failed to get shared link", err)
 		}
 		if item.SharedLink == nil {
-			u.PrintInfo("cmd","No shared link on this item")
+			u.PrintInfo("cmd", "No shared link on this item")
 			return
 		}
-		u.PrintGeneric(fmt.Sprintf("URL:    %s", item.SharedLink.URL))
-		u.PrintGeneric(fmt.Sprintf("Access: %s", item.SharedLink.Access))
-		if item.SharedLink.IsPasswordEnabled {
-			u.PrintGeneric("Password: enabled")
+		headers := []string{"FIELD", "VALUE"}
+		rows := [][]string{
+			{"URL", item.SharedLink.URL},
+			{"Access", item.SharedLink.Access},
 		}
+		if item.SharedLink.IsPasswordEnabled {
+			rows = append(rows, []string{"Password", "enabled"})
+		}
+		u.PrintTable(headers, rows)
 	},
 }
 
@@ -83,11 +89,15 @@ var slResolveCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		item, err := api.ResolveSharedLink(cmdutil.BoxClient, args[0], slFlags.password)
 		if err != nil {
-			u.PrintFatal("cmd","Failed to resolve shared link", err)
+			u.PrintFatal("cmd", "Failed to resolve shared link", err)
 		}
-		u.PrintGeneric(fmt.Sprintf("Type: %s", item.Type))
-		u.PrintGeneric(fmt.Sprintf("ID:   %s", item.ID))
-		u.PrintGeneric(fmt.Sprintf("Name: %s", item.Name))
+		headers := []string{"FIELD", "VALUE"}
+		rows := [][]string{
+			{"Type", item.Type},
+			{"ID", item.ID},
+			{"Name", item.Name},
+		}
+		u.PrintTable(headers, rows)
 	},
 }
 

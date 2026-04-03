@@ -147,15 +147,19 @@ var collabPendingCmd = &cobra.Command{
 }
 
 func printCollab(c *types.Collaboration) {
-	u.PrintGeneric(fmt.Sprintf("ID:     %s", c.ID))
-	u.PrintGeneric(fmt.Sprintf("Role:   %s", c.Role))
-	u.PrintGeneric(fmt.Sprintf("Status: %s", c.Status))
+	headers := []string{"FIELD", "VALUE"}
+	rows := [][]string{
+		{"ID", c.ID},
+		{"Role", c.Role},
+		{"Status", c.Status},
+	}
 	if c.Item != nil {
-		u.PrintGeneric(fmt.Sprintf("Item:   %s %s (%s)", c.Item.Type, c.Item.ID, c.Item.Name))
+		rows = append(rows, []string{"Item", fmt.Sprintf("%s %s (%s)", c.Item.Type, c.Item.ID, c.Item.Name)})
 	}
 	if c.AccessibleBy != nil {
-		u.PrintGeneric(fmt.Sprintf("User:   %s (%s)", c.AccessibleBy.Name, c.AccessibleBy.Login))
+		rows = append(rows, []string{"User", fmt.Sprintf("%s (%s)", c.AccessibleBy.Name, c.AccessibleBy.Login)})
 	}
+	u.PrintTable(headers, rows)
 }
 
 func init() {

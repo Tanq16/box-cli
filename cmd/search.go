@@ -122,7 +122,6 @@ var searchCmd = &cobra.Command{
 			rows = append(rows, []string{item.Type, item.ID, item.Name, size})
 		}
 		u.PrintTable(headers, rows)
-		u.PrintInfo("cmd",fmt.Sprintf("%d results (of %d total)", len(results.Entries), results.TotalCount))
 	},
 }
 
