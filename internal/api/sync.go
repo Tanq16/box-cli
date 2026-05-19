@@ -115,7 +115,7 @@ func BuildLocalTree(rootDir string, ignoreSet map[string]struct{}) (*types.FileT
 	return tree, err
 }
 
-func BuildRemoteTree(c *client.BoxClient, folderID string, basePath string, ignoreSet map[string]struct{}) (*types.FileTree, error) {
+func BuildRemoteTree(c *client.BoxClient, folderID string, basePath string, ignoreSet map[string]struct{}, localHint *types.FileTree) (*types.FileTree, error) {
 	tree := &types.FileTree{
 		ID:    folderID,
 		Files: make(map[string]types.FileInfo),
@@ -152,7 +152,20 @@ func BuildRemoteTree(c *client.BoxClient, folderID string, basePath string, igno
 			}
 			itemPath := filepath.Join(basePath, item.Name)
 			if item.Type == "folder" {
-				subTree, err := BuildRemoteTree(c, item.ID, itemPath, ignoreSet)
+				var childHint *types.FileTree
+				if localHint != nil {
+					sub, ok := localHint.Dirs[item.Name]
+					if !ok {
+						tree.Dirs[item.Name] = &types.FileTree{
+							ID:    item.ID,
+							Files: make(map[string]types.FileInfo),
+							Dirs:  make(map[string]*types.FileTree),
+						}
+						continue
+					}
+					childHint = sub
+				}
+				subTree, err := BuildRemoteTree(c, item.ID, itemPath, ignoreSet, childHint)
 				if err != nil {
 					log.Debug().Err(err).Str("folder", item.Name).Msg("failed to build remote subtree, skipping")
 					continue
@@ -256,7 +269,7 @@ func PlanPush(ctx context.Context, c *client.BoxClient, localDir string, remoteP
 		return nil, fmt.Errorf("failed to resolve remote path: %w", err)
 	}
 
-	remoteTree, err := BuildRemoteTree(c, folderID, "", ignoreSet)
+	remoteTree, err := BuildRemoteTree(c, folderID, "", ignoreSet, localTree)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build remote tree: %w", err)
 	}
@@ -299,7 +312,7 @@ func execPushTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, l
 						progress.Errors.Add(1)
 					}
 				} else {
-					if err := UploadFile(c, localPath, remoteFolderID); err != nil {
+					if err := UploadFile(c, localPath, remoteFolderID, true, nil); err != nil {
 						log.Debug().Err(err).Str("file", name).Msg("failed to upload file")
 						progress.Errors.Add(1)
 					}
@@ -377,7 +390,7 @@ func PlanPull(ctx context.Context, c *client.BoxClient, remotePath string, local
 		return nil, fmt.Errorf("failed to resolve remote path: %w", err)
 	}
 
-	remoteTree, err := BuildRemoteTree(c, folderID, "", ignoreSet)
+	remoteTree, err := BuildRemoteTree(c, folderID, "", ignoreSet, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build remote tree: %w", err)
 	}

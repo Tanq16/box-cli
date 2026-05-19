@@ -18,7 +18,7 @@ import (
 	"github.com/tanq16/box/internal/types"
 )
 
-func UploadFileChunked(c *client.BoxClient, localPath string, parentFolderID string) error {
+func UploadFileChunked(c *client.BoxClient, localPath string, parentFolderID string, overwrite bool, progress *UploadProgress) error {
 	file, err := os.Open(localPath)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
@@ -32,7 +32,7 @@ func UploadFileChunked(c *client.BoxClient, localPath string, parentFolderID str
 	fileSize := stat.Size()
 	fileName := filepath.Base(localPath)
 
-	session, err := createUploadSession(c, fileName, parentFolderID, fileSize)
+	session, err := createUploadSession(c, fileName, parentFolderID, fileSize, overwrite)
 	if err != nil {
 		return fmt.Errorf("failed to create upload session: %w", err)
 	}
@@ -69,6 +69,9 @@ func UploadFileChunked(c *client.BoxClient, localPath string, parentFolderID str
 		}
 		parts = append(parts, *part)
 		offset += int64(n)
+		if progress != nil {
+			progress.BytesDone.Add(int64(n))
+		}
 
 		log.Debug().Int("part", partNum+1).Int("total", session.TotalParts).Msg("uploaded part")
 	}
@@ -83,7 +86,7 @@ func UploadFileChunked(c *client.BoxClient, localPath string, parentFolderID str
 	return nil
 }
 
-func createUploadSession(c *client.BoxClient, fileName string, folderID string, fileSize int64) (*types.UploadSession, error) {
+func createUploadSession(c *client.BoxClient, fileName string, folderID string, fileSize int64, overwrite bool) (*types.UploadSession, error) {
 	body := fmt.Sprintf(`{"folder_id":%q,"file_size":%d,"file_name":%q}`, folderID, fileSize, fileName)
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/files/upload_sessions", client.UploadBaseURL), bytes.NewBufferString(body))
 	if err != nil {
@@ -98,18 +101,24 @@ func createUploadSession(c *client.BoxClient, fileName string, folderID string, 
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusConflict {
-		var conflictErr struct {
+		var conflictResp struct {
 			ContextInfo struct {
 				Conflicts []types.BoxItem `json:"conflicts"`
 			} `json:"context_info"`
 		}
 		respBody, _ := io.ReadAll(resp.Body)
-		if json.Unmarshal(respBody, &conflictErr) == nil && len(conflictErr.ContextInfo.Conflicts) > 0 {
-			existingID := conflictErr.ContextInfo.Conflicts[0].ID
-			log.Debug().Str("existing_id", existingID).Msg("file exists, creating version upload session")
-			return createVersionUploadSession(c, existingID, fileSize)
+		existingID := ""
+		if json.Unmarshal(respBody, &conflictResp) == nil && len(conflictResp.ContextInfo.Conflicts) > 0 {
+			existingID = conflictResp.ContextInfo.Conflicts[0].ID
 		}
-		return nil, fmt.Errorf("upload session conflict for '%s'", fileName)
+		if !overwrite {
+			return nil, &ConflictError{Name: fileName, ExistingID: existingID}
+		}
+		if existingID == "" {
+			return nil, fmt.Errorf("upload conflict for '%s' but no existing file ID returned", fileName)
+		}
+		log.Debug().Str("existing_id", existingID).Msg("file exists, creating version upload session")
+		return createVersionUploadSession(c, existingID, fileSize)
 	}
 
 	if resp.StatusCode != http.StatusCreated {

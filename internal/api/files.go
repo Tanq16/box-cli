@@ -10,11 +10,39 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
 	"github.com/rs/zerolog/log"
 	"github.com/tanq16/box/internal/client"
 	"github.com/tanq16/box/internal/types"
 )
+
+type UploadProgress struct {
+	BytesDone atomic.Int64
+	Total     int64
+}
+
+type progressReader struct {
+	r       io.Reader
+	counter *atomic.Int64
+}
+
+func (pr *progressReader) Read(p []byte) (int, error) {
+	n, err := pr.r.Read(p)
+	if n > 0 && pr.counter != nil {
+		pr.counter.Add(int64(n))
+	}
+	return n, err
+}
+
+type ConflictError struct {
+	Name       string
+	ExistingID string
+}
+
+func (e *ConflictError) Error() string {
+	return fmt.Sprintf("file '%s' already exists at destination (use --overwrite to replace)", e.Name)
+}
 
 func GetFileInfo(c *client.BoxClient, fileID string) (*types.BoxItem, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/files/%s", client.APIBaseURL, fileID), nil)
@@ -33,7 +61,7 @@ func GetFileInfo(c *client.BoxClient, fileID string) (*types.BoxItem, error) {
 	return &item, nil
 }
 
-func UploadFile(c *client.BoxClient, localPath string, parentFolderID string) error {
+func UploadFile(c *client.BoxClient, localPath string, parentFolderID string, overwrite bool, progress *UploadProgress) error {
 	file, err := os.Open(localPath)
 	if err != nil {
 		return fmt.Errorf("failed to open file '%s': %w", localPath, err)
@@ -58,9 +86,17 @@ func UploadFile(c *client.BoxClient, localPath string, parentFolderID string) er
 	}
 	writer.Close()
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/files/content", client.UploadBaseURL), body)
+	totalLen := int64(body.Len())
+	var reqBody io.Reader = body
+	if progress != nil {
+		reqBody = &progressReader{r: body, counter: &progress.BytesDone}
+	}
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/files/content", client.UploadBaseURL), reqBody)
 	if err != nil {
 		return fmt.Errorf("failed to create upload request: %w", err)
+	}
+	if progress != nil {
+		req.ContentLength = totalLen
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
@@ -71,17 +107,23 @@ func UploadFile(c *client.BoxClient, localPath string, parentFolderID string) er
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusConflict {
-		var conflictErr struct {
+		var conflictResp struct {
 			ContextInfo struct {
 				Conflicts []types.BoxItem `json:"conflicts"`
 			} `json:"context_info"`
 		}
 		respBody, _ := io.ReadAll(resp.Body)
-		if json.Unmarshal(respBody, &conflictErr) == nil && len(conflictErr.ContextInfo.Conflicts) > 0 {
-			existingID := conflictErr.ContextInfo.Conflicts[0].ID
-			return UploadFileVersion(c, localPath, existingID)
+		existingID := ""
+		if json.Unmarshal(respBody, &conflictResp) == nil && len(conflictResp.ContextInfo.Conflicts) > 0 {
+			existingID = conflictResp.ContextInfo.Conflicts[0].ID
 		}
-		return fmt.Errorf("upload conflict for '%s'", fileName)
+		if !overwrite {
+			return &ConflictError{Name: fileName, ExistingID: existingID}
+		}
+		if existingID == "" {
+			return fmt.Errorf("upload conflict for '%s' but no existing file ID returned", fileName)
+		}
+		return UploadFileVersion(c, localPath, existingID)
 	}
 
 	if resp.StatusCode != http.StatusCreated {
@@ -132,7 +174,7 @@ func UploadFileVersion(c *client.BoxClient, localPath string, fileID string) err
 	return nil
 }
 
-func UploadFolder(c *client.BoxClient, localPath string, parentFolderID string) error {
+func UploadFolder(c *client.BoxClient, localPath string, parentFolderID string, overwrite bool, progress *UploadProgress) error {
 	rootFolderName := filepath.Base(localPath)
 	rootBoxID, err := FindOrCreateFolder(c, rootFolderName, parentFolderID)
 	if err != nil {
@@ -142,7 +184,7 @@ func UploadFolder(c *client.BoxClient, localPath string, parentFolderID string) 
 	folderIDMap := make(map[string]string)
 	folderIDMap[localPath] = rootBoxID
 
-	return filepath.WalkDir(localPath, func(currentPath string, d os.DirEntry, err error) error {
+	walkErr := filepath.WalkDir(localPath, func(currentPath string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -164,7 +206,10 @@ func UploadFolder(c *client.BoxClient, localPath string, parentFolderID string) 
 			}
 			folderIDMap[currentPath] = boxFolderID
 		} else {
-			if err := UploadFile(c, currentPath, parentBoxID); err != nil {
+			if err := UploadFile(c, currentPath, parentBoxID, overwrite, progress); err != nil {
+				if conflict, isConflict := err.(*ConflictError); isConflict {
+					return conflict
+				}
 				log.Debug().Err(err).Str("file", currentPath).Msg("failed to upload")
 			} else {
 				log.Debug().Str("file", currentPath).Msg("uploaded")
@@ -172,6 +217,26 @@ func UploadFolder(c *client.BoxClient, localPath string, parentFolderID string) 
 		}
 		return nil
 	})
+	return walkErr
+}
+
+func SumFolderSize(localPath string) (int64, error) {
+	var total int64
+	err := filepath.WalkDir(localPath, func(_ string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		info, ierr := d.Info()
+		if ierr != nil {
+			return ierr
+		}
+		total += info.Size()
+		return nil
+	})
+	return total, err
 }
 
 func DownloadFile(c *client.BoxClient, fileID string, localPath string) (string, error) {

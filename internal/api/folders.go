@@ -8,11 +8,37 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/tanq16/box/internal/client"
 	"github.com/tanq16/box/internal/types"
 )
+
+type pathCacheEntry struct {
+	id       string
+	itemType string
+}
+
+type pathCacheStore struct {
+	mu      sync.RWMutex
+	entries map[string]pathCacheEntry
+}
+
+var resolveCache = &pathCacheStore{entries: make(map[string]pathCacheEntry)}
+
+func (s *pathCacheStore) get(key string) (pathCacheEntry, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	e, ok := s.entries[key]
+	return e, ok
+}
+
+func (s *pathCacheStore) set(key string, e pathCacheEntry) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.entries[key] = e
+}
 
 func ResolvePath(c *client.BoxClient, path string, expectedType string) (string, string, error) {
 	if path == "" || path == "/" || path == "root" {
@@ -21,6 +47,7 @@ func ResolvePath(c *client.BoxClient, path string, expectedType string) (string,
 	segments := strings.Split(strings.Trim(path, "/"), "/")
 	currentID := "0"
 	var currentType string
+	var cumulativeKey string
 
 	for i, segment := range segments {
 		if segment == "" {
@@ -28,57 +55,70 @@ func ResolvePath(c *client.BoxClient, path string, expectedType string) (string,
 		}
 		isLastSegment := (i == len(segments) - 1)
 
-		found := false
-		offset := 0
-		limit := 1000
+		if cumulativeKey == "" {
+			cumulativeKey = strings.ToLower(segment)
+		} else {
+			cumulativeKey = cumulativeKey + "/" + strings.ToLower(segment)
+		}
 
-		for !found {
-			req, err := http.NewRequest("GET", fmt.Sprintf("%s/folders/%s/items", client.APIBaseURL, currentID), nil)
-			if err != nil {
-				return "", "", fmt.Errorf("failed to create request: %w", err)
-			}
-			q := req.URL.Query()
-			q.Add("fields", "type,name,id")
-			q.Add("limit", fmt.Sprintf("%d", limit))
-			q.Add("offset", fmt.Sprintf("%d", offset))
-			req.URL.RawQuery = q.Encode()
+		if cached, ok := resolveCache.get(cumulativeKey); ok {
+			currentID = cached.id
+			currentType = cached.itemType
+		} else {
+			found := false
+			offset := 0
+			limit := 1000
 
-			resp, err := c.Do(req)
-			if err != nil {
-				return "", "", fmt.Errorf("failed to list folder %s: %w", currentID, err)
-			}
-			if resp.StatusCode != http.StatusOK {
-				err := client.HandleError("resolve path", resp)
+			for !found {
+				req, err := http.NewRequest("GET", fmt.Sprintf("%s/folders/%s/items", client.APIBaseURL, currentID), nil)
+				if err != nil {
+					return "", "", fmt.Errorf("failed to create request: %w", err)
+				}
+				q := req.URL.Query()
+				q.Add("fields", "type,name,id")
+				q.Add("limit", fmt.Sprintf("%d", limit))
+				q.Add("offset", fmt.Sprintf("%d", offset))
+				req.URL.RawQuery = q.Encode()
+
+				resp, err := c.Do(req)
+				if err != nil {
+					return "", "", fmt.Errorf("failed to list folder %s: %w", currentID, err)
+				}
+				if resp.StatusCode != http.StatusOK {
+					err := client.HandleError("resolve path", resp)
+					resp.Body.Close()
+					return "", "", err
+				}
+				var items types.BoxFolderItems
+				err = json.NewDecoder(resp.Body).Decode(&items)
 				resp.Body.Close()
-				return "", "", err
-			}
-			var items types.BoxFolderItems
-			err = json.NewDecoder(resp.Body).Decode(&items)
-			resp.Body.Close()
-			if err != nil {
-				return "", "", fmt.Errorf("failed to parse response: %w", err)
-			}
+				if err != nil {
+					return "", "", fmt.Errorf("failed to parse response: %w", err)
+				}
 
-			for _, item := range items.Entries {
-				if strings.EqualFold(item.Name, segment) {
-					currentID = item.ID
-					currentType = item.Type
-					found = true
+				for _, item := range items.Entries {
+					if strings.EqualFold(item.Name, segment) {
+						currentID = item.ID
+						currentType = item.Type
+						found = true
+						break
+					}
+				}
+				if found {
+					break
+				}
+				offset += len(items.Entries)
+				if offset >= items.TotalCount || len(items.Entries) == 0 {
 					break
 				}
 			}
-			if found {
-				break
+
+			if !found {
+				return "", "", fmt.Errorf("path not found: '%s' in '%s'", segment, path)
 			}
-			offset += len(items.Entries)
-			if offset >= items.TotalCount || len(items.Entries) == 0 {
-				break
-			}
+			resolveCache.set(cumulativeKey, pathCacheEntry{id: currentID, itemType: currentType})
 		}
 
-		if !found {
-			return "", "", fmt.Errorf("path not found: '%s' in '%s'", segment, path)
-		}
 		if isLastSegment {
 			if expectedType != "" && currentType != expectedType {
 				return "", "", fmt.Errorf("'%s' is a %s, but expected a %s", segment, currentType, expectedType)
