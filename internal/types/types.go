@@ -84,17 +84,17 @@ type FileInfo struct {
 }
 
 type Collaboration struct {
-	ID           string           `json:"id"`
-	Type         string           `json:"type"`
-	Item         *CollabItem      `json:"item,omitempty"`
-	AccessibleBy *CollabAccessor  `json:"accessible_by,omitempty"`
-	Role         string           `json:"role"`
-	Status       string           `json:"status"`
-	ExpiresAt    *string          `json:"expires_at,omitempty"`
-	InviteEmail  *string          `json:"invite_email,omitempty"`
-	CreatedBy    *CollabAccessor  `json:"created_by,omitempty"`
-	CreatedAt    *string          `json:"created_at,omitempty"`
-	ModifiedAt   *string          `json:"modified_at,omitempty"`
+	ID           string          `json:"id"`
+	Type         string          `json:"type"`
+	Item         *CollabItem     `json:"item,omitempty"`
+	AccessibleBy *CollabAccessor `json:"accessible_by,omitempty"`
+	Role         string          `json:"role"`
+	Status       string          `json:"status"`
+	ExpiresAt    *string         `json:"expires_at,omitempty"`
+	InviteEmail  *string         `json:"invite_email,omitempty"`
+	CreatedBy    *CollabAccessor `json:"created_by,omitempty"`
+	CreatedAt    *string         `json:"created_at,omitempty"`
+	ModifiedAt   *string         `json:"modified_at,omitempty"`
 }
 
 type CollabItem struct {
@@ -125,34 +125,34 @@ type SearchResults struct {
 }
 
 type SearchOptions struct {
-	Query        string
-	Type         string
-	Extensions   []string
-	FolderID     string
-	CreatedAfter string
+	Query         string
+	Type          string
+	Extensions    []string
+	FolderID      string
+	CreatedAfter  string
 	CreatedBefore string
 	UpdatedAfter  string
 	UpdatedBefore string
-	SizeMin      int64
-	SizeMax      int64
-	Owner        string
-	Sort         string
-	Limit        int
+	SizeMin       int64
+	SizeMax       int64
+	Owner         string
+	Sort          string
+	Limit         int
 }
 
 type BoxSharedLink struct {
-	URL               string              `json:"url,omitempty"`
-	DownloadURL       string              `json:"download_url,omitempty"`
-	VanityURL         string              `json:"vanity_url,omitempty"`
-	VanityName        string              `json:"vanity_name,omitempty"`
-	Access            string              `json:"access,omitempty"`
-	EffectiveAccess   string              `json:"effective_access,omitempty"`
-	EffectivePermission string            `json:"effective_permission,omitempty"`
-	IsPasswordEnabled bool                `json:"is_password_enabled,omitempty"`
-	UnsharedAt        *string             `json:"unshared_at,omitempty"`
-	DownloadCount     int                 `json:"download_count,omitempty"`
-	PreviewCount      int                 `json:"preview_count,omitempty"`
-	Permissions       *SharedLinkPerms    `json:"permissions,omitempty"`
+	URL                 string           `json:"url,omitempty"`
+	DownloadURL         string           `json:"download_url,omitempty"`
+	VanityURL           string           `json:"vanity_url,omitempty"`
+	VanityName          string           `json:"vanity_name,omitempty"`
+	Access              string           `json:"access,omitempty"`
+	EffectiveAccess     string           `json:"effective_access,omitempty"`
+	EffectivePermission string           `json:"effective_permission,omitempty"`
+	IsPasswordEnabled   bool             `json:"is_password_enabled,omitempty"`
+	UnsharedAt          *string          `json:"unshared_at,omitempty"`
+	DownloadCount       int              `json:"download_count,omitempty"`
+	PreviewCount        int              `json:"preview_count,omitempty"`
+	Permissions         *SharedLinkPerms `json:"permissions,omitempty"`
 }
 
 type SharedLinkPerms struct {

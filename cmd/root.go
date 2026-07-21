@@ -24,7 +24,6 @@ var forAIFlag bool
 
 var boxClient *client.BoxClient
 
-
 var rootCmd = &cobra.Command{
 	Use:     "box",
 	Short:   "CLI tool for Box.com file operations",

@@ -53,7 +53,7 @@ func ResolvePath(c *client.BoxClient, path string, expectedType string) (string,
 		if segment == "" {
 			continue
 		}
-		isLastSegment := (i == len(segments) - 1)
+		isLastSegment := (i == len(segments)-1)
 
 		if cumulativeKey == "" {
 			cumulativeKey = strings.ToLower(segment)
