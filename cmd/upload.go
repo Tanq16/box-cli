@@ -150,7 +150,7 @@ func handleUploadResult(err error, successMsg string) {
 	if err != nil {
 		var conflict *api.ConflictError
 		if errors.As(err, &conflict) {
-			u.PrintFatal(err.Error(), nil)
+			u.PrintFatal("upload conflict", conflict)
 		}
 		u.PrintFatal("Upload failed", err)
 	}

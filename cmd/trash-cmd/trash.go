@@ -1,7 +1,10 @@
 package trashcmd
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"os/signal"
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/box/cmd/cmdutil"
@@ -49,13 +52,18 @@ var trashEmptyCmd = &cobra.Command{
 	Use:   "empty",
 	Short: "Permanently delete everything in the trash (cannot be undone)",
 	Run: func(c *cobra.Command, args []string) {
-		if !trashEmptyFlags.yes && !u.GlobalForAIFlag {
+		if !trashEmptyFlags.yes {
+			if u.GlobalForAIFlag {
+				u.PrintFatal("refusing to empty trash without --yes in --for-ai mode", nil)
+			}
 			if !cmdutil.Confirm("Permanently delete ALL trashed items?") {
 				u.PrintInfo("Aborted")
 				return
 			}
 		}
-		count, err := api.EmptyTrash(cmdutil.BoxClient)
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer stop()
+		count, err := api.EmptyTrash(ctx, cmdutil.BoxClient)
 		if err != nil {
 			u.PrintFatal("Failed to empty trash", err)
 		}

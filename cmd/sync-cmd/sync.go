@@ -73,6 +73,11 @@ var syncPushCmd = &cobra.Command{
 		}
 		u.PrintRunning(fmt.Sprintf("Syncing push: %d to upload, %d to update, %d to delete", plan.Add, plan.Update, deleteCount))
 
+		effectiveTotal := plan.Total
+		if !syncFlags.delete {
+			effectiveTotal -= plan.DeleteTotal()
+		}
+
 		progress := &api.SyncProgress{}
 		done := make(chan struct{})
 		var printed atomic.Bool
@@ -90,7 +95,10 @@ var syncPushCmd = &cobra.Command{
 					}
 					firstTick = false
 					printed.Store(true)
-					pct := int(progress.Completed.Load()) * 100 / plan.Total
+					pct := 0
+					if effectiveTotal > 0 {
+						pct = int(progress.Completed.Load()) * 100 / effectiveTotal
+					}
 					u.PrintProgress("Syncing", pct)
 				}
 			}
@@ -152,6 +160,11 @@ var syncPullCmd = &cobra.Command{
 		}
 		u.PrintRunning(fmt.Sprintf("Syncing pull: %d to download, %d to update, %d to delete", plan.Add, plan.Update, deleteCount))
 
+		effectiveTotal := plan.Total
+		if !syncFlags.delete {
+			effectiveTotal -= plan.DeleteTotal()
+		}
+
 		progress := &api.SyncProgress{}
 		done := make(chan struct{})
 		var printed atomic.Bool
@@ -169,7 +182,10 @@ var syncPullCmd = &cobra.Command{
 					}
 					firstTick = false
 					printed.Store(true)
-					pct := int(progress.Completed.Load()) * 100 / plan.Total
+					pct := 0
+					if effectiveTotal > 0 {
+						pct = int(progress.Completed.Load()) * 100 / effectiveTotal
+					}
 					u.PrintProgress("Syncing", pct)
 				}
 			}

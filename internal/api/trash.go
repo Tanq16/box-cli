@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -161,16 +162,19 @@ func RestoreItem(c *client.BoxClient, itemType string, itemID string, parentID s
 	return &item, nil
 }
 
-func EmptyTrash(c *client.BoxClient) (int, error) {
+func EmptyTrash(ctx context.Context, c *client.BoxClient) (int, error) {
 	items, err := ListTrash(c)
 	if err != nil {
 		return 0, err
 	}
-	var g errgroup.Group
+	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(8)
 	var purged atomic.Int64
 	for _, item := range items {
 		g.Go(func() error {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
 			var err error
 			if item.Type == "folder" {
 				err = PurgeFolder(c, item.ID)

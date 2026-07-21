@@ -36,7 +36,10 @@ var purgeCmd = &cobra.Command{
 		if label == "" {
 			label = itemID
 		}
-		if !purgeFlags.yes && !u.GlobalForAIFlag {
+		if !purgeFlags.yes {
+			if u.GlobalForAIFlag {
+				u.PrintFatal("refusing to purge without --yes in --for-ai mode", nil)
+			}
 			if !cmdutil.Confirm(fmt.Sprintf("Permanently delete %s '%s'?", itemType, label)) {
 				u.PrintInfo("Aborted")
 				return
