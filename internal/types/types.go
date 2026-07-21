@@ -83,22 +83,6 @@ type FileInfo struct {
 	ID   string
 }
 
-type IndexItem struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	Path         string `json:"path"`
-	Type         string `json:"type"`
-	Size         int64  `json:"size"`
-	ModifiedTime string `json:"modified_time"`
-}
-
-type IndexStore struct {
-	Provider  string      `json:"provider"`
-	RootPath  string      `json:"root_path"`
-	Timestamp time.Time   `json:"timestamp"`
-	Items     []IndexItem `json:"items"`
-}
-
 type Collaboration struct {
 	ID           string           `json:"id"`
 	Type         string           `json:"type"`
