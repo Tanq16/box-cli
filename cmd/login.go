@@ -16,7 +16,7 @@ var loginCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		config, err := auth.LoadCredentials()
 		if err != nil {
-			u.PrintFatal("cmd", "failed to load credentials", err)
+			u.PrintFatal("failed to load credentials", err)
 		}
 
 		mode := "default"
@@ -26,11 +26,11 @@ var loginCmd = &cobra.Command{
 
 		token, err := auth.Login(config, mode)
 		if err != nil {
-			u.PrintFatal("cmd", "login failed", err)
+			u.PrintFatal("login failed", err)
 		}
 
 		_ = token
-		u.PrintSuccess("cmd", "authenticated successfully — token saved")
+		u.PrintSuccess("authenticated successfully — token saved")
 	},
 }
 

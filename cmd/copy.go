@@ -14,8 +14,9 @@ var copyFlags struct {
 }
 
 var copyCmd = &cobra.Command{
-	Use:   "copy <source> <dest-folder>",
-	Short: "Copy a file or folder on Box",
+	Use:     "copy <source> <dest-folder>",
+	Aliases: []string{"cp"},
+	Short:   "Copy a file or folder on Box",
 	Long: `Copy a file or folder to a destination folder.
 
 Use --name to give the copy a different name.
@@ -28,7 +29,7 @@ the item is copied there with that name.`,
 
 		srcID, srcType, err := api.ResolvePath(boxClient, srcPath, "")
 		if err != nil {
-			u.PrintFatal("cmd","Failed to resolve source path", err)
+			u.PrintFatal("Failed to resolve source path", err)
 		}
 
 		name := copyFlags.name
@@ -38,15 +39,15 @@ the item is copied there with that name.`,
 			if srcType == "folder" {
 				item, err := api.CopyFolder(boxClient, srcID, destID, name)
 				if err != nil {
-					u.PrintFatal("cmd","Failed to copy folder", err)
+					u.PrintFatal("Failed to copy folder", err)
 				}
-				u.PrintSuccess("cmd",fmt.Sprintf("Copied: %s (ID: %s)", item.Name, item.ID))
+				u.PrintSuccess(fmt.Sprintf("Copied: %s (ID: %s)", item.Name, item.ID))
 			} else {
 				item, err := api.CopyFile(boxClient, srcID, destID, name)
 				if err != nil {
-					u.PrintFatal("cmd","Failed to copy file", err)
+					u.PrintFatal("Failed to copy file", err)
 				}
-				u.PrintSuccess("cmd",fmt.Sprintf("Copied: %s (ID: %s)", item.Name, item.ID))
+				u.PrintSuccess(fmt.Sprintf("Copied: %s (ID: %s)", item.Name, item.ID))
 			}
 			return
 		}
@@ -58,26 +59,26 @@ the item is copied there with that name.`,
 
 		destParentID, _, err := api.ResolvePath(boxClient, destParent, "folder")
 		if err != nil {
-			u.PrintFatal("cmd","Failed to resolve destination path", err)
+			u.PrintFatal("Failed to resolve destination path", err)
 		}
 
 		if srcType == "folder" {
 			item, err := api.CopyFolder(boxClient, srcID, destParentID, name)
 			if err != nil {
-				u.PrintFatal("cmd","Failed to copy folder", err)
+				u.PrintFatal("Failed to copy folder", err)
 			}
-			u.PrintSuccess("cmd",fmt.Sprintf("Copied: %s (ID: %s)", item.Name, item.ID))
+			u.PrintSuccess(fmt.Sprintf("Copied: %s (ID: %s)", item.Name, item.ID))
 		} else {
 			item, err := api.CopyFile(boxClient, srcID, destParentID, name)
 			if err != nil {
-				u.PrintFatal("cmd","Failed to copy file", err)
+				u.PrintFatal("Failed to copy file", err)
 			}
-			u.PrintSuccess("cmd",fmt.Sprintf("Copied: %s (ID: %s)", item.Name, item.ID))
+			u.PrintSuccess(fmt.Sprintf("Copied: %s (ID: %s)", item.Name, item.ID))
 		}
 	},
 }
 
 func init() {
-	copyCmd.Flags().StringVar(&copyFlags.name, "name", "", "Name for the copy (defaults to original name)")
+	copyCmd.Flags().StringVarP(&copyFlags.name, "name", "n", "", "Name for the copy (defaults to original name)")
 	rootCmd.AddCommand(copyCmd)
 }

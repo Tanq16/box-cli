@@ -17,7 +17,7 @@ func ResolveItemByID(id string) (string, string) {
 	if err == nil {
 		return fInfo.ID, fInfo.Type
 	}
-	u.PrintFatal("cmd", "Failed to resolve item ID", err)
+	u.PrintFatal("Failed to resolve item ID", err)
 	return "", ""
 }
 
@@ -26,11 +26,11 @@ func ResolveItem(args []string, idFlag string) (string, string) {
 		return ResolveItemByID(idFlag)
 	}
 	if len(args) == 0 {
-		u.PrintFatal("cmd", "Must specify a path or --id", nil)
+		u.PrintFatal("Must specify a path or --id", nil)
 	}
 	itemID, itemType, err := api.ResolvePath(BoxClient, args[0], "")
 	if err != nil {
-		u.PrintFatal("cmd", "Failed to resolve path", err)
+		u.PrintFatal("Failed to resolve path", err)
 	}
 	return itemID, itemType
 }

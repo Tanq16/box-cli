@@ -31,13 +31,13 @@ var downloadCmd = &cobra.Command{
 			}
 		} else {
 			if len(args) == 0 {
-				u.PrintFatal("cmd","Must specify a remote path or --id", nil)
+				u.PrintFatal("Must specify a remote path or --id", nil)
 			}
 			remotePath = args[0]
 			var err error
 			itemID, itemType, err = api.ResolvePath(boxClient, remotePath, "")
 			if err != nil {
-				u.PrintFatal("cmd","Failed to resolve path", err)
+				u.PrintFatal("Failed to resolve path", err)
 			}
 		}
 
@@ -60,13 +60,13 @@ var downloadCmd = &cobra.Command{
 			if localPath == "" {
 				localPath = "downloaded_folder"
 			}
-			u.PrintRunning("cmd", fmt.Sprintf("Downloading folder to '%s'...", localPath))
+			u.PrintRunning(fmt.Sprintf("Downloading folder to '%s'...", localPath))
 			if err := api.DownloadFolder(boxClient, itemID, localPath); err != nil {
 				u.ClearLines(1)
-				u.PrintFatal("cmd", "Folder download failed", err)
+				u.PrintFatal("Folder download failed", err)
 			}
 			u.ClearLines(1)
-			u.PrintSuccess("cmd", fmt.Sprintf("Downloaded to: %s", localPath))
+			u.PrintSuccess(fmt.Sprintf("Downloaded to: %s", localPath))
 			return
 		}
 
@@ -80,23 +80,23 @@ var downloadCmd = &cobra.Command{
 		if localPath != "" {
 			if dir := filepath.Dir(localPath); dir != "." {
 				if err := os.MkdirAll(dir, 0755); err != nil {
-					u.PrintFatal("cmd", fmt.Sprintf("Failed to create directory '%s'", filepath.Dir(localPath)), err)
+					u.PrintFatal(fmt.Sprintf("Failed to create directory '%s'", filepath.Dir(localPath)), err)
 				}
 			}
 		}
 
-		u.PrintRunning("cmd", "Downloading file...")
+		u.PrintRunning("Downloading file...")
 		savedPath, err := api.DownloadFile(boxClient, itemID, localPath)
 		if err != nil {
 			u.ClearLines(1)
-			u.PrintFatal("cmd", "Download failed", err)
+			u.PrintFatal("Download failed", err)
 		}
 		u.ClearLines(1)
-		u.PrintSuccess("cmd", fmt.Sprintf("Downloaded to: %s", savedPath))
+		u.PrintSuccess(fmt.Sprintf("Downloaded to: %s", savedPath))
 	},
 }
 
 func init() {
-	downloadCmd.Flags().StringVar(&downloadFlags.fileID, "id", "", "Download by file/folder ID instead of path")
+	downloadCmd.Flags().StringVarP(&downloadFlags.fileID, "id", "i", "", "Download by file/folder ID instead of path")
 	rootCmd.AddCommand(downloadCmd)
 }

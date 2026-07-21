@@ -35,7 +35,7 @@ var syncPushCmd = &cobra.Command{
 
 		info, err := os.Stat(localDir)
 		if err != nil || !info.IsDir() {
-			u.PrintFatal("cmd", fmt.Sprintf("'%s' is not a valid directory", localDir), err)
+			u.PrintFatal(fmt.Sprintf("'%s' is not a valid directory", localDir), err)
 		}
 
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -43,20 +43,20 @@ var syncPushCmd = &cobra.Command{
 
 		ignore := parseIgnore(syncFlags.ignore)
 
-		u.PrintRunning("cmd", "Scanning files...")
+		u.PrintRunning("Scanning files...")
 		plan, err := api.PlanPush(ctx, cmdutil.BoxClient, localDir, remotePath, ignore)
 		if err != nil {
 			u.ClearLines(1)
-			u.PrintFatal("cmd", "Sync push failed", err)
+			u.PrintFatal("Sync push failed", err)
 		}
 		u.ClearLines(1)
 
 		if plan.Total == 0 {
-			u.PrintSuccess("cmd", "Already in sync")
+			u.PrintSuccess("Already in sync")
 			return
 		}
 
-		u.PrintRunning("cmd", fmt.Sprintf("Syncing push: %d to upload, %d to update, %d to delete", plan.Add, plan.Update, plan.Delete))
+		u.PrintRunning(fmt.Sprintf("Syncing push: %d to upload, %d to update, %d to delete", plan.Add, plan.Update, plan.Delete))
 
 		progress := &api.SyncProgress{}
 		done := make(chan struct{})
@@ -89,14 +89,14 @@ var syncPushCmd = &cobra.Command{
 		u.ClearLines(1)
 
 		if err != nil {
-			u.PrintFatal("cmd", "Sync push failed", err)
+			u.PrintFatal("Sync push failed", err)
 		}
 
 		errors := int(progress.Errors.Load())
 		if errors > 0 {
-			u.PrintWarn("cmd", fmt.Sprintf("Sync push complete with %d errors (use --debug for details)", errors), nil)
+			u.PrintWarn(fmt.Sprintf("Sync push complete with %d errors (use --debug for details)", errors), nil)
 		} else {
-			u.PrintSuccess("cmd", "Sync push complete")
+			u.PrintSuccess("Sync push complete")
 		}
 	},
 }
@@ -114,20 +114,20 @@ var syncPullCmd = &cobra.Command{
 
 		ignore := parseIgnore(syncFlags.ignore)
 
-		u.PrintRunning("cmd", "Scanning files...")
+		u.PrintRunning("Scanning files...")
 		plan, err := api.PlanPull(ctx, cmdutil.BoxClient, remotePath, localDir, ignore)
 		if err != nil {
 			u.ClearLines(1)
-			u.PrintFatal("cmd", "Sync pull failed", err)
+			u.PrintFatal("Sync pull failed", err)
 		}
 		u.ClearLines(1)
 
 		if plan.Total == 0 {
-			u.PrintSuccess("cmd", "Already in sync")
+			u.PrintSuccess("Already in sync")
 			return
 		}
 
-		u.PrintRunning("cmd", fmt.Sprintf("Syncing pull: %d to download, %d to update, %d to delete", plan.Add, plan.Update, plan.Delete))
+		u.PrintRunning(fmt.Sprintf("Syncing pull: %d to download, %d to update, %d to delete", plan.Add, plan.Update, plan.Delete))
 
 		progress := &api.SyncProgress{}
 		done := make(chan struct{})
@@ -160,14 +160,14 @@ var syncPullCmd = &cobra.Command{
 		u.ClearLines(1)
 
 		if err != nil {
-			u.PrintFatal("cmd", "Sync pull failed", err)
+			u.PrintFatal("Sync pull failed", err)
 		}
 
 		errors := int(progress.Errors.Load())
 		if errors > 0 {
-			u.PrintWarn("cmd", fmt.Sprintf("Sync pull complete with %d errors (use --debug for details)", errors), nil)
+			u.PrintWarn(fmt.Sprintf("Sync pull complete with %d errors (use --debug for details)", errors), nil)
 		} else {
-			u.PrintSuccess("cmd", "Sync pull complete")
+			u.PrintSuccess("Sync pull complete")
 		}
 	},
 }
@@ -188,8 +188,8 @@ func parseIgnore(s string) []string {
 }
 
 func init() {
-	SyncCmd.PersistentFlags().IntVar(&syncFlags.concurrency, "concurrency", 4, "Number of concurrent operations")
-	SyncCmd.PersistentFlags().StringVar(&syncFlags.ignore, "ignore", "", "Comma-separated list of names to ignore")
+	SyncCmd.PersistentFlags().IntVarP(&syncFlags.concurrency, "concurrency", "c", 4, "Number of concurrent operations")
+	SyncCmd.PersistentFlags().StringVarP(&syncFlags.ignore, "ignore", "i", "", "Comma-separated list of names to ignore")
 	SyncCmd.AddCommand(syncPushCmd)
 	SyncCmd.AddCommand(syncPullCmd)
 }

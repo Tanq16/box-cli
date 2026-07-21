@@ -195,6 +195,31 @@ func ListFolder(c *client.BoxClient, folderID string) ([]types.BoxItemDisplay, [
 	return allFolders, allFiles, nil
 }
 
+func ListFolderItems(c *client.BoxClient, folderID, remotePath, filter string) ([]types.BoxItemDisplay, error) {
+	if folderID == "" {
+		id, _, err := ResolvePath(c, remotePath, "folder")
+		if err != nil {
+			return nil, err
+		}
+		folderID = id
+	}
+	folders, files, err := ListFolder(c, folderID)
+	if err != nil {
+		return nil, err
+	}
+	filter = strings.ToLower(filter)
+	var items []types.BoxItemDisplay
+	for _, group := range [][]types.BoxItemDisplay{folders, files} {
+		for _, item := range group {
+			if filter != "" && !strings.Contains(strings.ToLower(item.Name), filter) {
+				continue
+			}
+			items = append(items, item)
+		}
+	}
+	return items, nil
+}
+
 func FindOrCreateFolder(c *client.BoxClient, folderName string, parentID string) (string, error) {
 	offset := 0
 	limit := 1000

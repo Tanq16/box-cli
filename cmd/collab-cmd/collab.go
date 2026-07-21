@@ -45,16 +45,16 @@ For advanced cases, use --user-id or --group-id instead of a positional email.`,
 		if collabCreateFlags.id != "" {
 			itemID, itemType = cmdutil.ResolveItemByID(collabCreateFlags.id)
 			if len(args) < 1 && collabCreateFlags.userID == "" && collabCreateFlags.groupID == "" {
-				u.PrintFatal("cmd","Must specify an email, --user-id, or --group-id", nil)
+				u.PrintFatal("Must specify an email, --user-id, or --group-id", nil)
 			}
 		} else {
 			if len(args) < 1 {
-				u.PrintFatal("cmd","Must specify a path (or use --id)", nil)
+				u.PrintFatal("Must specify a path (or use --id)", nil)
 			}
 			itemID, itemType = cmdutil.ResolveItem(args[:1], "")
 
 			if len(args) < 2 && collabCreateFlags.userID == "" && collabCreateFlags.groupID == "" {
-				u.PrintFatal("cmd","Must specify an email, --user-id, or --group-id", nil)
+				u.PrintFatal("Must specify an email, --user-id, or --group-id", nil)
 			}
 		}
 
@@ -67,10 +67,10 @@ For advanced cases, use --user-id or --group-id instead of a positional email.`,
 
 		collab, err := api.CreateCollaboration(boxClient, itemType, itemID, collabCreateFlags.role, email, collabCreateFlags.userID, collabCreateFlags.groupID)
 		if err != nil {
-			u.PrintFatal("cmd","Failed to create collaboration", err)
+			u.PrintFatal("Failed to create collaboration", err)
 		}
 		printCollab(collab)
-		u.PrintSuccess("cmd","Collaboration created")
+		u.PrintSuccess("Collaboration created")
 	},
 }
 
@@ -81,7 +81,7 @@ var collabGetCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		collab, err := api.GetCollaboration(cmdutil.BoxClient, args[0])
 		if err != nil {
-			u.PrintFatal("cmd","Failed to get collaboration", err)
+			u.PrintFatal("Failed to get collaboration", err)
 		}
 		printCollab(collab)
 	},
@@ -94,10 +94,10 @@ var collabUpdateCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		collab, err := api.UpdateCollaboration(cmdutil.BoxClient, args[0], collabUpdateFlags.role, collabUpdateFlags.status)
 		if err != nil {
-			u.PrintFatal("cmd","Failed to update collaboration", err)
+			u.PrintFatal("Failed to update collaboration", err)
 		}
 		printCollab(collab)
-		u.PrintSuccess("cmd","Collaboration updated")
+		u.PrintSuccess("Collaboration updated")
 	},
 }
 
@@ -107,9 +107,9 @@ var collabDeleteCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(c *cobra.Command, args []string) {
 		if err := api.DeleteCollaboration(cmdutil.BoxClient, args[0]); err != nil {
-			u.PrintFatal("cmd","Failed to delete collaboration", err)
+			u.PrintFatal("Failed to delete collaboration", err)
 		}
-		u.PrintSuccess("cmd","Collaboration deleted")
+		u.PrintSuccess("Collaboration deleted")
 	},
 }
 
@@ -119,10 +119,10 @@ var collabPendingCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		list, err := api.ListPendingCollaborations(cmdutil.BoxClient)
 		if err != nil {
-			u.PrintFatal("cmd","Failed to list pending collaborations", err)
+			u.PrintFatal("Failed to list pending collaborations", err)
 		}
 		if len(list.Entries) == 0 {
-			u.PrintInfo("cmd","No pending collaborations")
+			u.PrintInfo("No pending collaborations")
 			return
 		}
 
@@ -163,10 +163,10 @@ func printCollab(c *types.Collaboration) {
 }
 
 func init() {
-	collabCreateCmd.Flags().StringVar(&collabCreateFlags.id, "id", "", "Item ID (instead of path)")
+	collabCreateCmd.Flags().StringVarP(&collabCreateFlags.id, "id", "i", "", "Item ID (instead of path)")
 	collabCreateCmd.Flags().StringVarP(&collabCreateFlags.role, "role", "r", "viewer", "Permission role (viewer, editor, co-owner, etc.)")
-	collabCreateCmd.Flags().StringVar(&collabCreateFlags.userID, "user-id", "", "User ID (instead of email)")
-	collabCreateCmd.Flags().StringVar(&collabCreateFlags.groupID, "group-id", "", "Group ID (instead of email)")
+	collabCreateCmd.Flags().StringVarP(&collabCreateFlags.userID, "user-id", "U", "", "User ID (instead of email)")
+	collabCreateCmd.Flags().StringVarP(&collabCreateFlags.groupID, "group-id", "G", "", "Group ID (instead of email)")
 
 	collabUpdateCmd.Flags().StringVarP(&collabUpdateFlags.role, "role", "r", "", "New role")
 	collabUpdateCmd.Flags().StringVarP(&collabUpdateFlags.status, "status", "s", "", "New status (accepted, rejected)")

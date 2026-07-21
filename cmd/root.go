@@ -37,7 +37,7 @@ var rootCmd = &cobra.Command{
 		}
 		httpClient, err := auth.GetHTTPClient()
 		if err != nil {
-			u.PrintFatal("cmd", "failed to authenticate — run 'box login' first", err)
+			u.PrintFatal("failed to authenticate — run 'box login' first", err)
 		}
 		boxClient = client.New(httpClient)
 		cmdutil.BoxClient = boxClient

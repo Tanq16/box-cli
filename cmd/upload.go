@@ -13,7 +13,6 @@ import (
 )
 
 var uploadFlags struct {
-	chunked   bool
 	overwrite bool
 }
 
@@ -34,12 +33,12 @@ destination. Use --overwrite to upload as a new version of the existing file.`,
 
 		info, err := os.Stat(localPath)
 		if err != nil {
-			u.PrintFatal("cmd", fmt.Sprintf("Cannot access '%s'", localPath), err)
+			u.PrintFatal(fmt.Sprintf("Cannot access '%s'", localPath), err)
 		}
 
 		parentFolderID, _, err := api.ResolvePath(boxClient, remotePath, "folder")
 		if err != nil {
-			u.PrintFatal("cmd", fmt.Sprintf("Failed to resolve remote path '%s'", remotePath), err)
+			u.PrintFatal(fmt.Sprintf("Failed to resolve remote path '%s'", remotePath), err)
 		}
 
 		if info.IsDir() {
@@ -48,7 +47,7 @@ destination. Use --overwrite to upload as a new version of the existing file.`,
 		}
 
 		const chunkedThreshold = 50 * 1024 * 1024
-		if uploadFlags.chunked || info.Size() > chunkedThreshold {
+		if info.Size() > chunkedThreshold {
 			runChunkedUpload(localPath, info.Size(), parentFolderID)
 			return
 		}
@@ -61,7 +60,7 @@ func runSingleUpload(localPath string, size int64, remotePath string, parentFold
 	progress := &api.UploadProgress{Total: size}
 	label := fmt.Sprintf("Uploading '%s' to '%s'", localPath, remotePath)
 
-	u.PrintRunning("cmd", label)
+	u.PrintRunning(label)
 	stop, printed := startUploadTicker(progress)
 
 	err := api.UploadFile(boxClient, localPath, parentFolderID, uploadFlags.overwrite, progress)
@@ -79,7 +78,7 @@ func runChunkedUpload(localPath string, size int64, parentFolderID string) {
 	progress := &api.UploadProgress{Total: size}
 	label := fmt.Sprintf("Uploading '%s' via chunked upload (%s)", localPath, u.FormatSize(size))
 
-	u.PrintRunning("cmd", label)
+	u.PrintRunning(label)
 	stop, printed := startUploadTicker(progress)
 
 	err := api.UploadFileChunked(boxClient, localPath, parentFolderID, uploadFlags.overwrite, progress)
@@ -96,12 +95,12 @@ func runChunkedUpload(localPath string, size int64, parentFolderID string) {
 func runFolderUpload(localPath, remotePath, parentFolderID string) {
 	total, err := api.SumFolderSize(localPath)
 	if err != nil {
-		u.PrintFatal("cmd", fmt.Sprintf("Failed to scan '%s'", localPath), err)
+		u.PrintFatal(fmt.Sprintf("Failed to scan '%s'", localPath), err)
 	}
 	progress := &api.UploadProgress{Total: total}
 	label := fmt.Sprintf("Uploading folder '%s' to '%s' (%s)", localPath, remotePath, u.FormatSize(total))
 
-	u.PrintRunning("cmd", label)
+	u.PrintRunning(label)
 	stop, printed := startUploadTicker(progress)
 
 	err = api.UploadFolder(boxClient, localPath, parentFolderID, uploadFlags.overwrite, progress)
@@ -151,15 +150,14 @@ func handleUploadResult(err error, successMsg string) {
 	if err != nil {
 		var conflict *api.ConflictError
 		if errors.As(err, &conflict) {
-			u.PrintFatal("cmd", err.Error(), nil)
+			u.PrintFatal(err.Error(), nil)
 		}
-		u.PrintFatal("cmd", "Upload failed", err)
+		u.PrintFatal("Upload failed", err)
 	}
-	u.PrintSuccess("cmd", successMsg)
+	u.PrintSuccess(successMsg)
 }
 
 func init() {
-	uploadCmd.Flags().BoolVar(&uploadFlags.chunked, "chunked", false, "Force chunked upload")
-	uploadCmd.Flags().BoolVar(&uploadFlags.overwrite, "overwrite", false, "Upload as a new version if a file with the same name exists")
+	uploadCmd.Flags().BoolVarP(&uploadFlags.overwrite, "overwrite", "o", false, "Upload as a new version if a file with the same name exists")
 	rootCmd.AddCommand(uploadCmd)
 }

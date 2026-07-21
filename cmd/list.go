@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"strings"
-
 	"github.com/spf13/cobra"
 	"github.com/tanq16/box/internal/api"
 	u "github.com/tanq16/box/utils"
@@ -14,53 +12,36 @@ var listFlags struct {
 }
 
 var listCmd = &cobra.Command{
-	Use:   "list [path]",
-	Short: "List contents of a Box folder",
-	Args:  cobra.MaximumNArgs(1),
+	Use:     "list [path]",
+	Aliases: []string{"ls"},
+	Short:   "List contents of a Box folder",
+	Args:    cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		var folderID string
-		var err error
-
-		if listFlags.folderID != "" {
-			folderID = listFlags.folderID
-		} else {
-			remotePath := "/"
-			if len(args) > 0 {
-				remotePath = args[0]
-			}
-			folderID, _, err = api.ResolvePath(boxClient, remotePath, "folder")
-			if err != nil {
-				u.PrintFatal("cmd","Failed to resolve path", err)
-			}
+		remotePath := "/"
+		if len(args) > 0 {
+			remotePath = args[0]
 		}
 
-		folders, files, err := api.ListFolder(boxClient, folderID)
+		items, err := api.ListFolderItems(boxClient, listFlags.folderID, remotePath, listFlags.filter)
 		if err != nil {
-			u.PrintFatal("cmd","Failed to list folder", err)
+			u.PrintFatal("Failed to list folder", err)
 		}
-
-		filter := strings.ToLower(listFlags.filter)
 
 		headers := []string{"TYPE", "ID", "NAME", "SIZE", "MODIFIED"}
 		var rows [][]string
-		for _, f := range folders {
-			if filter != "" && !strings.Contains(strings.ToLower(f.Name), filter) {
-				continue
+		for _, item := range items {
+			size := "-"
+			if item.Type != "folder" {
+				size = u.FormatSize(item.Size)
 			}
-			rows = append(rows, []string{"folder", f.ID, f.Name, "-", f.ModifiedTime})
-		}
-		for _, f := range files {
-			if filter != "" && !strings.Contains(strings.ToLower(f.Name), filter) {
-				continue
-			}
-			rows = append(rows, []string{"file", f.ID, f.Name, u.FormatSize(f.Size), f.ModifiedTime})
+			rows = append(rows, []string{item.Type, item.ID, item.Name, size, item.ModifiedTime})
 		}
 		u.PrintTable(headers, rows)
 	},
 }
 
 func init() {
-	listCmd.Flags().StringVar(&listFlags.folderID, "id", "", "List by folder ID instead of path")
+	listCmd.Flags().StringVarP(&listFlags.folderID, "id", "i", "", "List by folder ID instead of path")
 	listCmd.Flags().StringVarP(&listFlags.filter, "filter", "F", "", "Case-insensitive substring filter on item names")
 	rootCmd.AddCommand(listCmd)
 }
