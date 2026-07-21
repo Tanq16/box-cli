@@ -12,6 +12,7 @@ import (
 	collabcmd "github.com/tanq16/box/cmd/collab-cmd"
 	sharedlinkcmd "github.com/tanq16/box/cmd/shared-link-cmd"
 	synccmd "github.com/tanq16/box/cmd/sync-cmd"
+	trashcmd "github.com/tanq16/box/cmd/trash-cmd"
 	"github.com/tanq16/box/internal/auth"
 	"github.com/tanq16/box/internal/client"
 	u "github.com/tanq16/box/utils"
@@ -82,4 +83,6 @@ func init() {
 	rootCmd.AddCommand(collabcmd.CollabCmd)
 	rootCmd.AddCommand(sharedlinkcmd.SharedLinkCmd)
 	rootCmd.AddCommand(synccmd.SyncCmd)
+	rootCmd.AddCommand(trashcmd.TrashCmd)
+	rootCmd.AddCommand(trashcmd.RestoreCmd)
 }

@@ -1,12 +1,23 @@
 package cmdutil
 
 import (
+	"strings"
+
 	"github.com/tanq16/box/internal/api"
 	"github.com/tanq16/box/internal/client"
 	u "github.com/tanq16/box/utils"
 )
 
 var BoxClient *client.BoxClient
+
+func Confirm(prompt string) bool {
+	answer, err := u.PromptInput(prompt+" [y/N]", "")
+	if err != nil {
+		return false
+	}
+	answer = strings.ToLower(answer)
+	return answer == "y" || answer == "yes"
+}
 
 func ResolveItemByID(id string) (string, string) {
 	info, err := api.GetFileInfo(BoxClient, id)

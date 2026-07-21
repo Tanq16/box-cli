@@ -411,14 +411,16 @@ func CopyFolder(c *client.BoxClient, folderID string, destFolderID string, newNa
 	return &item, nil
 }
 
-func DeleteFolder(c *client.BoxClient, folderID string) error {
+func DeleteFolder(c *client.BoxClient, folderID string, recursive bool) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/folders/%s", client.APIBaseURL, folderID), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
-	q := req.URL.Query()
-	q.Add("recursive", "true")
-	req.URL.RawQuery = q.Encode()
+	if recursive {
+		q := req.URL.Query()
+		q.Add("recursive", "true")
+		req.URL.RawQuery = q.Encode()
+	}
 
 	resp, err := c.Do(req)
 	if err != nil {

@@ -8,19 +8,20 @@ import (
 )
 
 var deleteFlags struct {
-	itemID string
+	itemID    string
+	recursive bool
 }
 
 var deleteCmd = &cobra.Command{
 	Use:     "delete <path>",
 	Aliases: []string{"rm"},
-	Short:   "Delete a file or folder on Box",
+	Short:   "Move a file or folder to the Box trash",
 	Args:    cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		itemID, itemType := cmdutil.ResolveItem(args, deleteFlags.itemID)
 
 		if itemType == "folder" {
-			if err := api.DeleteFolder(boxClient, itemID); err != nil {
+			if err := api.DeleteFolder(boxClient, itemID, deleteFlags.recursive); err != nil {
 				u.PrintFatal("Failed to delete folder", err)
 			}
 		} else {
@@ -34,5 +35,6 @@ var deleteCmd = &cobra.Command{
 
 func init() {
 	deleteCmd.Flags().StringVarP(&deleteFlags.itemID, "id", "i", "", "Delete by item ID instead of path")
+	deleteCmd.Flags().BoolVarP(&deleteFlags.recursive, "recursive", "r", false, "Recursively trash a non-empty folder")
 	rootCmd.AddCommand(deleteCmd)
 }

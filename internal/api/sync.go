@@ -372,7 +372,7 @@ func execPushTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, l
 		if _, exists := local.Dirs[name]; !exists {
 			folderID := remote.Dirs[name].ID
 			if folderID != "" {
-				if err := DeleteFolder(c, folderID); err != nil {
+				if err := DeleteFolder(c, folderID, true); err != nil {
 					log.Debug().Err(err).Str("folder", name).Msg("failed to delete remote folder")
 					progress.Errors.Add(1)
 				}

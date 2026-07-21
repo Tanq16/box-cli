@@ -24,6 +24,7 @@ type BoxFolderItems struct {
 	Entries    []BoxItem `json:"entries"`
 	Offset     int       `json:"offset"`
 	Limit      int       `json:"limit"`
+	NextMarker string    `json:"next_marker,omitempty"`
 }
 
 type BoxError struct {
