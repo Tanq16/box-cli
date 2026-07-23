@@ -8,30 +8,33 @@ import (
 )
 
 var deleteFlags struct {
-	itemID string
+	itemID    string
+	recursive bool
 }
 
 var deleteCmd = &cobra.Command{
-	Use:   "delete <path>",
-	Short: "Delete a file or folder on Box",
-	Args:  cobra.MaximumNArgs(1),
+	Use:     "delete <path>",
+	Aliases: []string{"rm"},
+	Short:   "Move a file or folder to the Box trash",
+	Args:    cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		itemID, itemType := cmdutil.ResolveItem(args, deleteFlags.itemID)
 
 		if itemType == "folder" {
-			if err := api.DeleteFolder(boxClient, itemID); err != nil {
-				u.PrintFatal("cmd","Failed to delete folder", err)
+			if err := api.DeleteFolder(boxClient, itemID, deleteFlags.recursive); err != nil {
+				u.PrintFatal("Failed to delete folder", err)
 			}
 		} else {
 			if err := api.DeleteFile(boxClient, itemID); err != nil {
-				u.PrintFatal("cmd","Failed to delete file", err)
+				u.PrintFatal("Failed to delete file", err)
 			}
 		}
-		u.PrintSuccess("cmd","Deleted successfully")
+		u.PrintSuccess("Deleted successfully")
 	},
 }
 
 func init() {
-	deleteCmd.Flags().StringVar(&deleteFlags.itemID, "id", "", "Delete by item ID instead of path")
+	deleteCmd.Flags().StringVarP(&deleteFlags.itemID, "id", "i", "", "Delete by item ID instead of path")
+	deleteCmd.Flags().BoolVarP(&deleteFlags.recursive, "recursive", "r", false, "Recursively trash a non-empty folder")
 	rootCmd.AddCommand(deleteCmd)
 }

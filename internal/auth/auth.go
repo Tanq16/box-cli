@@ -28,11 +28,11 @@ const (
 func ConfigDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		u.PrintFatal("auth", "cannot determine home directory", err)
+		u.PrintFatal("cannot determine home directory", err)
 	}
 	dir := filepath.Join(home, ".config", "box")
 	if err := os.MkdirAll(dir, 0700); err != nil {
-		u.PrintFatal("auth", "cannot create config directory", err)
+		u.PrintFatal("cannot create config directory", err)
 	}
 	return dir
 }
@@ -116,12 +116,12 @@ func loginWithCallback(config *oauth2.Config, state string) (*oauth2.Token, erro
 		}
 	}()
 
-	u.PrintInfo("auth", "Opening browser for authentication...")
+	u.PrintInfo("Opening browser for authentication...")
 	if err := openBrowser(authorizationURL); err != nil {
 		srv.Close()
 		return nil, fmt.Errorf("cannot open browser — use 'box login --manual' instead")
 	}
-	u.PrintInfo("auth", "Waiting for authorization in browser...")
+	u.PrintInfo("Waiting for authorization in browser...")
 
 	var code string
 	select {
@@ -150,10 +150,10 @@ func loginWithCallback(config *oauth2.Config, state string) (*oauth2.Token, erro
 func loginWithManual(config *oauth2.Config, state string) (*oauth2.Token, error) {
 	authorizationURL := config.AuthCodeURL(state, oauth2.AccessTypeOffline)
 
-	u.PrintInfo("auth", "Visit this URL to authenticate:")
+	u.PrintInfo("Visit this URL to authenticate:")
 	u.PrintGeneric(authorizationURL)
 	u.PrintGeneric("")
-	u.PrintInfo("auth", "After authorizing, paste the full redirect URL or authorization code.")
+	u.PrintInfo("After authorizing, paste the full redirect URL or authorization code.")
 
 	input, err := u.PromptInput("Authorization:", "http://localhost:8080?code=...")
 	if err != nil {

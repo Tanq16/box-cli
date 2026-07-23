@@ -11,8 +11,9 @@ import (
 )
 
 var moveCmd = &cobra.Command{
-	Use:   "move <source> <dest>",
-	Short: "Move or rename a file or folder on Box",
+	Use:     "move <source> <dest>",
+	Aliases: []string{"mv"},
+	Short:   "Move or rename a file or folder on Box",
 	Long: `Move a file or folder to a new location, or rename it in place.
 
 If dest is an existing folder, the item is moved into it.
@@ -25,15 +26,15 @@ If source and dest share the same parent, the item is renamed.`,
 
 		srcID, srcType, err := api.ResolvePath(boxClient, srcPath, "")
 		if err != nil {
-			u.PrintFatal("cmd", "Failed to resolve source path", err)
+			u.PrintFatal("Failed to resolve source path", err)
 		}
 
 		if destID, destType, derr := api.ResolvePath(boxClient, destPath, ""); derr == nil && destType == "folder" {
 			item, err := api.MoveItem(boxClient, srcType, srcID, destID)
 			if err != nil {
-				u.PrintFatal("cmd", "Failed to move item", err)
+				u.PrintFatal("Failed to move item", err)
 			}
-			u.PrintSuccess("cmd", fmt.Sprintf("Moved to: %s (ID: %s)", item.Name, item.ID))
+			u.PrintSuccess(fmt.Sprintf("Moved to: %s (ID: %s)", item.Name, item.ID))
 			return
 		}
 
@@ -44,28 +45,28 @@ If source and dest share the same parent, the item is renamed.`,
 		if samePath(srcParent, destParent) {
 			item, err := api.RenameItem(boxClient, srcType, srcID, destName)
 			if err != nil {
-				u.PrintFatal("cmd", "Failed to rename item", err)
+				u.PrintFatal("Failed to rename item", err)
 			}
-			u.PrintSuccess("cmd", fmt.Sprintf("Renamed to: %s (ID: %s)", item.Name, item.ID))
+			u.PrintSuccess(fmt.Sprintf("Renamed to: %s (ID: %s)", item.Name, item.ID))
 			return
 		}
 
 		destParentID, _, err := api.ResolvePath(boxClient, destParent, "folder")
 		if err != nil {
-			u.PrintFatal("cmd", "Failed to resolve destination parent", err)
+			u.PrintFatal("Failed to resolve destination parent", err)
 		}
 
 		item, err := api.MoveItem(boxClient, srcType, srcID, destParentID)
 		if err != nil {
-			u.PrintFatal("cmd", "Failed to move item", err)
+			u.PrintFatal("Failed to move item", err)
 		}
 		if item.Name != destName {
 			item, err = api.RenameItem(boxClient, srcType, srcID, destName)
 			if err != nil {
-				u.PrintFatal("cmd", "Failed to rename item after move", err)
+				u.PrintFatal("Failed to rename item after move", err)
 			}
 		}
-		u.PrintSuccess("cmd", fmt.Sprintf("Moved to: %s (ID: %s)", item.Name, item.ID))
+		u.PrintSuccess(fmt.Sprintf("Moved to: %s (ID: %s)", item.Name, item.ID))
 	},
 }
 

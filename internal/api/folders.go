@@ -53,7 +53,7 @@ func ResolvePath(c *client.BoxClient, path string, expectedType string) (string,
 		if segment == "" {
 			continue
 		}
-		isLastSegment := (i == len(segments) - 1)
+		isLastSegment := (i == len(segments)-1)
 
 		if cumulativeKey == "" {
 			cumulativeKey = strings.ToLower(segment)
@@ -193,6 +193,31 @@ func ListFolder(c *client.BoxClient, folderID string) ([]types.BoxItemDisplay, [
 	sort.Slice(allFolders, func(i, j int) bool { return allFolders[i].Name < allFolders[j].Name })
 	sort.Slice(allFiles, func(i, j int) bool { return allFiles[i].Name < allFiles[j].Name })
 	return allFolders, allFiles, nil
+}
+
+func ListFolderItems(c *client.BoxClient, folderID, remotePath, filter string) ([]types.BoxItemDisplay, error) {
+	if folderID == "" {
+		id, _, err := ResolvePath(c, remotePath, "folder")
+		if err != nil {
+			return nil, err
+		}
+		folderID = id
+	}
+	folders, files, err := ListFolder(c, folderID)
+	if err != nil {
+		return nil, err
+	}
+	filter = strings.ToLower(filter)
+	var items []types.BoxItemDisplay
+	for _, group := range [][]types.BoxItemDisplay{folders, files} {
+		for _, item := range group {
+			if filter != "" && !strings.Contains(strings.ToLower(item.Name), filter) {
+				continue
+			}
+			items = append(items, item)
+		}
+	}
+	return items, nil
 }
 
 func FindOrCreateFolder(c *client.BoxClient, folderName string, parentID string) (string, error) {
@@ -386,14 +411,16 @@ func CopyFolder(c *client.BoxClient, folderID string, destFolderID string, newNa
 	return &item, nil
 }
 
-func DeleteFolder(c *client.BoxClient, folderID string) error {
+func DeleteFolder(c *client.BoxClient, folderID string, recursive bool) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/folders/%s", client.APIBaseURL, folderID), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
-	q := req.URL.Query()
-	q.Add("recursive", "true")
-	req.URL.RawQuery = q.Encode()
+	if recursive {
+		q := req.URL.Query()
+		q.Add("recursive", "true")
+		req.URL.RawQuery = q.Encode()
+	}
 
 	resp, err := c.Do(req)
 	if err != nil {

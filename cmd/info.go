@@ -24,7 +24,7 @@ var infoCmd = &cobra.Command{
 		if itemType == "folder" {
 			info, err := api.GetFolderInfo(boxClient, itemID)
 			if err != nil {
-				u.PrintFatal("cmd", "Failed to get folder info", err)
+				u.PrintFatal("Failed to get folder info", err)
 			}
 			headers := []string{"FIELD", "VALUE"}
 			rows := [][]string{
@@ -50,7 +50,7 @@ var infoCmd = &cobra.Command{
 		} else {
 			info, err := api.GetFileInfo(boxClient, itemID)
 			if err != nil {
-				u.PrintFatal("cmd", "Failed to get file info", err)
+				u.PrintFatal("Failed to get file info", err)
 			}
 			headers := []string{"FIELD", "VALUE"}
 			rows := [][]string{
@@ -78,6 +78,6 @@ var infoCmd = &cobra.Command{
 }
 
 func init() {
-	infoCmd.Flags().StringVar(&infoFlags.itemID, "id", "", "Get info by item ID instead of path")
+	infoCmd.Flags().StringVarP(&infoFlags.itemID, "id", "i", "", "Get info by item ID instead of path")
 	rootCmd.AddCommand(infoCmd)
 }

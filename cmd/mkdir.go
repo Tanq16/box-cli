@@ -21,7 +21,7 @@ var mkdirCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		remotePath := strings.Trim(args[0], "/")
 		if remotePath == "" {
-			u.PrintFatal("cmd","Must specify a folder path", nil)
+			u.PrintFatal("Must specify a folder path", nil)
 		}
 
 		if mkdirFlags.parents {
@@ -30,11 +30,11 @@ var mkdirCmd = &cobra.Command{
 			for _, segment := range segments {
 				id, err := api.FindOrCreateFolder(boxClient, segment, parentID)
 				if err != nil {
-					u.PrintFatal("cmd",fmt.Sprintf("Failed to create folder '%s'", segment), err)
+					u.PrintFatal(fmt.Sprintf("Failed to create folder '%s'", segment), err)
 				}
 				parentID = id
 			}
-			u.PrintSuccess("cmd",fmt.Sprintf("Created: /%s", remotePath))
+			u.PrintSuccess(fmt.Sprintf("Created: /%s", remotePath))
 			return
 		}
 
@@ -43,14 +43,14 @@ var mkdirCmd = &cobra.Command{
 
 		parentID, _, err := api.ResolvePath(boxClient, parentPath, "folder")
 		if err != nil {
-			u.PrintFatal("cmd","Failed to resolve parent path", err)
+			u.PrintFatal("Failed to resolve parent path", err)
 		}
 
 		folder, err := api.CreateFolder(boxClient, folderName, parentID)
 		if err != nil {
-			u.PrintFatal("cmd","Failed to create folder", err)
+			u.PrintFatal("Failed to create folder", err)
 		}
-		u.PrintSuccess("cmd",fmt.Sprintf("Created: /%s (ID: %s)", remotePath, folder.ID))
+		u.PrintSuccess(fmt.Sprintf("Created: /%s (ID: %s)", remotePath, folder.ID))
 	},
 }
 

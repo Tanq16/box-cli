@@ -12,6 +12,7 @@ import (
 	collabcmd "github.com/tanq16/box/cmd/collab-cmd"
 	sharedlinkcmd "github.com/tanq16/box/cmd/shared-link-cmd"
 	synccmd "github.com/tanq16/box/cmd/sync-cmd"
+	trashcmd "github.com/tanq16/box/cmd/trash-cmd"
 	"github.com/tanq16/box/internal/auth"
 	"github.com/tanq16/box/internal/client"
 	u "github.com/tanq16/box/utils"
@@ -22,7 +23,6 @@ var debugFlag bool
 var forAIFlag bool
 
 var boxClient *client.BoxClient
-
 
 var rootCmd = &cobra.Command{
 	Use:     "box",
@@ -37,7 +37,7 @@ var rootCmd = &cobra.Command{
 		}
 		httpClient, err := auth.GetHTTPClient()
 		if err != nil {
-			u.PrintFatal("cmd", "failed to authenticate — run 'box login' first", err)
+			u.PrintFatal("failed to authenticate — run 'box login' first", err)
 		}
 		boxClient = client.New(httpClient)
 		cmdutil.BoxClient = boxClient
@@ -82,4 +82,6 @@ func init() {
 	rootCmd.AddCommand(collabcmd.CollabCmd)
 	rootCmd.AddCommand(sharedlinkcmd.SharedLinkCmd)
 	rootCmd.AddCommand(synccmd.SyncCmd)
+	rootCmd.AddCommand(trashcmd.TrashCmd)
+	rootCmd.AddCommand(trashcmd.RestoreCmd)
 }

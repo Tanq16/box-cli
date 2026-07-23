@@ -26,7 +26,7 @@ var slCreateCmd = &cobra.Command{
 		itemID, itemType := cmdutil.ResolveItem(args, slFlags.itemID)
 		item, err := api.CreateSharedLink(cmdutil.BoxClient, itemType, itemID, slFlags.access, slFlags.password)
 		if err != nil {
-			u.PrintFatal("cmd", "Failed to create shared link", err)
+			u.PrintFatal("Failed to create shared link", err)
 		}
 		if item.SharedLink != nil {
 			headers := []string{"FIELD", "VALUE"}
@@ -39,7 +39,7 @@ var slCreateCmd = &cobra.Command{
 			}
 			u.PrintTable(headers, rows)
 		}
-		u.PrintSuccess("cmd", "Shared link created")
+		u.PrintSuccess("Shared link created")
 	},
 }
 
@@ -51,10 +51,10 @@ var slGetCmd = &cobra.Command{
 		itemID, itemType := cmdutil.ResolveItem(args, slFlags.itemID)
 		item, err := api.GetSharedLink(cmdutil.BoxClient, itemType, itemID)
 		if err != nil {
-			u.PrintFatal("cmd", "Failed to get shared link", err)
+			u.PrintFatal("Failed to get shared link", err)
 		}
 		if item.SharedLink == nil {
-			u.PrintInfo("cmd", "No shared link on this item")
+			u.PrintInfo("No shared link on this item")
 			return
 		}
 		headers := []string{"FIELD", "VALUE"}
@@ -76,9 +76,9 @@ var slRemoveCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		itemID, itemType := cmdutil.ResolveItem(args, slFlags.itemID)
 		if err := api.RemoveSharedLink(cmdutil.BoxClient, itemType, itemID); err != nil {
-			u.PrintFatal("cmd","Failed to remove shared link", err)
+			u.PrintFatal("Failed to remove shared link", err)
 		}
-		u.PrintSuccess("cmd","Shared link removed")
+		u.PrintSuccess("Shared link removed")
 	},
 }
 
@@ -89,7 +89,7 @@ var slResolveCmd = &cobra.Command{
 	Run: func(c *cobra.Command, args []string) {
 		item, err := api.ResolveSharedLink(cmdutil.BoxClient, args[0], slFlags.password)
 		if err != nil {
-			u.PrintFatal("cmd", "Failed to resolve shared link", err)
+			u.PrintFatal("Failed to resolve shared link", err)
 		}
 		headers := []string{"FIELD", "VALUE"}
 		rows := [][]string{
@@ -102,9 +102,9 @@ var slResolveCmd = &cobra.Command{
 }
 
 func init() {
-	slCreateCmd.Flags().StringVar(&slFlags.itemID, "id", "", "Item ID (instead of path)")
-	slGetCmd.Flags().StringVar(&slFlags.itemID, "id", "", "Item ID (instead of path)")
-	slRemoveCmd.Flags().StringVar(&slFlags.itemID, "id", "", "Item ID (instead of path)")
+	slCreateCmd.Flags().StringVarP(&slFlags.itemID, "id", "i", "", "Item ID (instead of path)")
+	slGetCmd.Flags().StringVarP(&slFlags.itemID, "id", "i", "", "Item ID (instead of path)")
+	slRemoveCmd.Flags().StringVarP(&slFlags.itemID, "id", "i", "", "Item ID (instead of path)")
 
 	slCreateCmd.Flags().StringVarP(&slFlags.access, "access", "a", "open", "Access level (open, company, collaborators)")
 	slCreateCmd.Flags().StringVarP(&slFlags.password, "password", "P", "", "Password for shared link")

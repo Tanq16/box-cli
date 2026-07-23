@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/rs/zerolog/log"
@@ -19,12 +20,28 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+type SyncAction int
+
+const (
+	SyncAdd SyncAction = iota
+	SyncUpdate
+	SyncDelete
+	SyncCreateFolder
+	SyncDeleteFolder
+)
+
+type SyncOp struct {
+	Action SyncAction
+	Path   string
+}
+
 type SyncPlan struct {
 	Add     int // new files to upload (push) or download (pull)
 	Update  int
 	Delete  int
 	Folders int
 	Total   int
+	Ops     []SyncOp
 
 	localTree      *types.FileTree
 	remoteTree     *types.FileTree
@@ -32,9 +49,38 @@ type SyncPlan struct {
 	remoteFolderID string
 }
 
+func (p *SyncPlan) DeleteTotal() int {
+	n := 0
+	for _, op := range p.Ops {
+		if op.Action == SyncDelete || op.Action == SyncDeleteFolder {
+			n++
+		}
+	}
+	return n
+}
+
+func (p *SyncPlan) HasDeletes() bool {
+	return p.DeleteTotal() > 0
+}
+
+type SyncFailure struct {
+	Item string
+	Err  error
+}
+
 type SyncProgress struct {
 	Completed atomic.Int32
 	Errors    atomic.Int32
+
+	mu       sync.Mutex
+	Failures []SyncFailure
+}
+
+func (p *SyncProgress) fail(item string, err error) {
+	p.Errors.Add(1)
+	p.mu.Lock()
+	p.Failures = append(p.Failures, SyncFailure{Item: item, Err: err})
+	p.mu.Unlock()
 }
 
 func computeLocalHash(filePath string) (string, error) {
@@ -49,7 +95,6 @@ func computeLocalHash(filePath string) (string, error) {
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
-
 
 func BuildLocalTree(rootDir string, ignoreSet map[string]struct{}) (*types.FileTree, error) {
 	tree := &types.FileTree{
@@ -183,55 +228,53 @@ func BuildRemoteTree(c *client.BoxClient, folderID string, basePath string, igno
 	return tree, nil
 }
 
-func countPushOps(local, remote *types.FileTree) (add, update, del, folders int) {
+func collectPushOps(local, remote *types.FileTree, prefix string) []SyncOp {
+	var ops []SyncOp
 	for name, localFile := range local.Files {
 		remoteFile, exists := remote.Files[name]
 		if !exists {
-			add++
+			ops = append(ops, SyncOp{SyncAdd, filepath.Join(prefix, name)})
 		} else if remoteFile.Hash != localFile.Hash {
-			update++
+			ops = append(ops, SyncOp{SyncUpdate, filepath.Join(prefix, name)})
 		}
 	}
 	for name := range remote.Files {
 		if _, exists := local.Files[name]; !exists {
-			del++
+			ops = append(ops, SyncOp{SyncDelete, filepath.Join(prefix, name)})
 		}
 	}
 	for name, localSub := range local.Dirs {
 		remoteSub, exists := remote.Dirs[name]
 		if !exists {
-			folders++
+			ops = append(ops, SyncOp{SyncCreateFolder, filepath.Join(prefix, name)})
 			remoteSub = &types.FileTree{
 				Files: make(map[string]types.FileInfo),
 				Dirs:  make(map[string]*types.FileTree),
 			}
 		}
-		a, u, d, f := countPushOps(localSub, remoteSub)
-		add += a
-		update += u
-		del += d
-		folders += f
+		ops = append(ops, collectPushOps(localSub, remoteSub, filepath.Join(prefix, name))...)
 	}
 	for name := range remote.Dirs {
 		if _, exists := local.Dirs[name]; !exists {
-			folders++
+			ops = append(ops, SyncOp{SyncDeleteFolder, filepath.Join(prefix, name)})
 		}
 	}
-	return
+	return ops
 }
 
-func countPullOps(remote, local *types.FileTree) (add, update, del, folders int) {
+func collectPullOps(remote, local *types.FileTree, prefix string) []SyncOp {
+	var ops []SyncOp
 	for name, remoteFile := range remote.Files {
 		localFile, exists := local.Files[name]
 		if !exists {
-			add++
+			ops = append(ops, SyncOp{SyncAdd, filepath.Join(prefix, name)})
 		} else if localFile.Hash != remoteFile.Hash {
-			update++
+			ops = append(ops, SyncOp{SyncUpdate, filepath.Join(prefix, name)})
 		}
 	}
 	for name := range local.Files {
 		if _, exists := remote.Files[name]; !exists {
-			del++
+			ops = append(ops, SyncOp{SyncDelete, filepath.Join(prefix, name)})
 		}
 	}
 	for name, remoteSub := range remote.Dirs {
@@ -242,14 +285,26 @@ func countPullOps(remote, local *types.FileTree) (add, update, del, folders int)
 				Dirs:  make(map[string]*types.FileTree),
 			}
 		}
-		a, u, d, f := countPullOps(remoteSub, localSub)
-		add += a
-		update += u
-		del += d
-		folders += f
+		ops = append(ops, collectPullOps(remoteSub, localSub, filepath.Join(prefix, name))...)
 	}
 	for name := range local.Dirs {
 		if _, exists := remote.Dirs[name]; !exists {
+			ops = append(ops, SyncOp{SyncDeleteFolder, filepath.Join(prefix, name)})
+		}
+	}
+	return ops
+}
+
+func summarize(ops []SyncOp) (add, update, del, folders int) {
+	for _, op := range ops {
+		switch op.Action {
+		case SyncAdd:
+			add++
+		case SyncUpdate:
+			update++
+		case SyncDelete:
+			del++
+		case SyncCreateFolder, SyncDeleteFolder:
 			folders++
 		}
 	}
@@ -274,7 +329,8 @@ func PlanPush(ctx context.Context, c *client.BoxClient, localDir string, remoteP
 		return nil, fmt.Errorf("failed to build remote tree: %w", err)
 	}
 
-	add, update, del, folders := countPushOps(localTree, remoteTree)
+	ops := collectPushOps(localTree, remoteTree, "")
+	add, update, del, folders := summarize(ops)
 
 	return &SyncPlan{
 		Add:            add,
@@ -282,6 +338,7 @@ func PlanPush(ctx context.Context, c *client.BoxClient, localDir string, remoteP
 		Delete:         del,
 		Folders:        folders,
 		Total:          add + update + del + folders,
+		Ops:            ops,
 		localTree:      localTree,
 		remoteTree:     remoteTree,
 		localDir:       localDir,
@@ -289,15 +346,15 @@ func PlanPush(ctx context.Context, c *client.BoxClient, localDir string, remoteP
 	}, nil
 }
 
-func ExecPush(ctx context.Context, c *client.BoxClient, plan *SyncPlan, concurrency int, progress *SyncProgress) error {
+func ExecPush(ctx context.Context, c *client.BoxClient, plan *SyncPlan, concurrency int, progress *SyncProgress, deleteEnabled bool) error {
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
 
-	execPushTree(ctx, g, c, plan.localTree, plan.remoteTree, plan.localDir, plan.remoteFolderID, progress)
+	execPushTree(ctx, g, c, plan.localTree, plan.remoteTree, plan.localDir, plan.remoteFolderID, progress, deleteEnabled)
 	return g.Wait()
 }
 
-func execPushTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, local *types.FileTree, remote *types.FileTree, localDir string, remoteFolderID string, progress *SyncProgress) {
+func execPushTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, local *types.FileTree, remote *types.FileTree, localDir string, remoteFolderID string, progress *SyncProgress, deleteEnabled bool) {
 	for name, localFile := range local.Files {
 		remoteFile, exists := remote.Files[name]
 		if !exists || remoteFile.Hash != localFile.Hash {
@@ -308,13 +365,11 @@ func execPushTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, l
 				localPath := filepath.Join(localDir, name)
 				if exists && remoteFile.ID != "" {
 					if err := UploadFileVersion(c, localPath, remoteFile.ID); err != nil {
-						log.Debug().Err(err).Str("file", name).Msg("failed to update file")
-						progress.Errors.Add(1)
+						progress.fail(name, err)
 					}
 				} else {
 					if err := UploadFile(c, localPath, remoteFolderID, true, nil); err != nil {
-						log.Debug().Err(err).Str("file", name).Msg("failed to upload file")
-						progress.Errors.Add(1)
+						progress.fail(name, err)
 					}
 				}
 				progress.Completed.Add(1)
@@ -323,19 +378,20 @@ func execPushTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, l
 		}
 	}
 
-	for name, remoteFile := range remote.Files {
-		if _, exists := local.Files[name]; !exists {
-			g.Go(func() error {
-				if ctx.Err() != nil {
-					return ctx.Err()
-				}
-				if err := DeleteFile(c, remoteFile.ID); err != nil {
-					log.Debug().Err(err).Str("file", name).Msg("failed to delete remote file")
-					progress.Errors.Add(1)
-				}
-				progress.Completed.Add(1)
-				return nil
-			})
+	if deleteEnabled {
+		for name, remoteFile := range remote.Files {
+			if _, exists := local.Files[name]; !exists {
+				g.Go(func() error {
+					if ctx.Err() != nil {
+						return ctx.Err()
+					}
+					if err := DeleteFile(c, remoteFile.ID); err != nil {
+						progress.fail(name, err)
+					}
+					progress.Completed.Add(1)
+					return nil
+				})
+			}
 		}
 	}
 
@@ -350,8 +406,7 @@ func execPushTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, l
 		if !exists {
 			id, err := FindOrCreateFolder(c, name, remoteFolderID)
 			if err != nil {
-				log.Debug().Err(err).Str("folder", name).Msg("failed to create folder")
-				progress.Errors.Add(1)
+				progress.fail(name, err)
 				progress.Completed.Add(1)
 				continue
 			}
@@ -365,18 +420,19 @@ func execPushTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, l
 			subFolderID = remoteSubTree.ID
 		}
 
-		execPushTree(ctx, g, c, localSubTree, remoteSubTree, subLocalDir, subFolderID, progress)
+		execPushTree(ctx, g, c, localSubTree, remoteSubTree, subLocalDir, subFolderID, progress, deleteEnabled)
 	}
 
-	for name := range remote.Dirs {
-		if _, exists := local.Dirs[name]; !exists {
-			folderID := remote.Dirs[name].ID
-			if folderID != "" {
-				if err := DeleteFolder(c, folderID); err != nil {
-					log.Debug().Err(err).Str("folder", name).Msg("failed to delete remote folder")
-					progress.Errors.Add(1)
+	if deleteEnabled {
+		for name := range remote.Dirs {
+			if _, exists := local.Dirs[name]; !exists {
+				folderID := remote.Dirs[name].ID
+				if folderID != "" {
+					if err := DeleteFolder(c, folderID, true); err != nil {
+						progress.fail(name, err)
+					}
+					progress.Completed.Add(1)
 				}
-				progress.Completed.Add(1)
 			}
 		}
 	}
@@ -404,7 +460,8 @@ func PlanPull(ctx context.Context, c *client.BoxClient, remotePath string, local
 		}
 	}
 
-	add, update, del, folders := countPullOps(remoteTree, localTree)
+	ops := collectPullOps(remoteTree, localTree, "")
+	add, update, del, folders := summarize(ops)
 
 	return &SyncPlan{
 		Add:            add,
@@ -412,6 +469,7 @@ func PlanPull(ctx context.Context, c *client.BoxClient, remotePath string, local
 		Delete:         del,
 		Folders:        folders,
 		Total:          add + update + del + folders,
+		Ops:            ops,
 		localTree:      localTree,
 		remoteTree:     remoteTree,
 		localDir:       localDir,
@@ -419,15 +477,15 @@ func PlanPull(ctx context.Context, c *client.BoxClient, remotePath string, local
 	}, nil
 }
 
-func ExecPull(ctx context.Context, c *client.BoxClient, plan *SyncPlan, concurrency int, progress *SyncProgress) error {
+func ExecPull(ctx context.Context, c *client.BoxClient, plan *SyncPlan, concurrency int, progress *SyncProgress, deleteEnabled bool) error {
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
 
-	execPullTree(ctx, g, c, plan.remoteTree, plan.localTree, plan.localDir, plan.remoteFolderID, progress)
+	execPullTree(ctx, g, c, plan.remoteTree, plan.localTree, plan.localDir, plan.remoteFolderID, progress, deleteEnabled)
 	return g.Wait()
 }
 
-func execPullTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, remote *types.FileTree, local *types.FileTree, localDir string, remoteFolderID string, progress *SyncProgress) {
+func execPullTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, remote *types.FileTree, local *types.FileTree, localDir string, remoteFolderID string, progress *SyncProgress, deleteEnabled bool) {
 	os.MkdirAll(localDir, 0755)
 
 	for name, remoteFile := range remote.Files {
@@ -439,8 +497,7 @@ func execPullTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, r
 				}
 				localPath := filepath.Join(localDir, name)
 				if _, err := DownloadFile(c, remoteFile.ID, localPath); err != nil {
-					log.Debug().Err(err).Str("file", name).Msg("failed to download file")
-					progress.Errors.Add(1)
+					progress.fail(name, err)
 				}
 				progress.Completed.Add(1)
 				return nil
@@ -448,14 +505,15 @@ func execPullTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, r
 		}
 	}
 
-	for name := range local.Files {
-		if _, exists := remote.Files[name]; !exists {
-			localPath := filepath.Join(localDir, name)
-			if err := os.Remove(localPath); err != nil {
-				log.Debug().Err(err).Str("file", name).Msg("failed to delete local file")
-				progress.Errors.Add(1)
+	if deleteEnabled {
+		for name := range local.Files {
+			if _, exists := remote.Files[name]; !exists {
+				localPath := filepath.Join(localDir, name)
+				if err := os.Remove(localPath); err != nil {
+					progress.fail(name, err)
+				}
+				progress.Completed.Add(1)
 			}
-			progress.Completed.Add(1)
 		}
 	}
 
@@ -474,17 +532,18 @@ func execPullTree(ctx context.Context, g *errgroup.Group, c *client.BoxClient, r
 			}
 		}
 
-		execPullTree(ctx, g, c, remoteSubTree, localSubTree, subLocalDir, subFolderID, progress)
+		execPullTree(ctx, g, c, remoteSubTree, localSubTree, subLocalDir, subFolderID, progress, deleteEnabled)
 	}
 
-	for name := range local.Dirs {
-		if _, exists := remote.Dirs[name]; !exists {
-			localPath := filepath.Join(localDir, name)
-			if err := os.RemoveAll(localPath); err != nil {
-				log.Debug().Err(err).Str("folder", name).Msg("failed to delete local folder")
-				progress.Errors.Add(1)
+	if deleteEnabled {
+		for name := range local.Dirs {
+			if _, exists := remote.Dirs[name]; !exists {
+				localPath := filepath.Join(localDir, name)
+				if err := os.RemoveAll(localPath); err != nil {
+					progress.fail(name, err)
+				}
+				progress.Completed.Add(1)
 			}
-			progress.Completed.Add(1)
 		}
 	}
 }

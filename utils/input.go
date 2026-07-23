@@ -168,7 +168,7 @@ func PromptTextArea(prompt string, placeholder string) (string, error) {
 		return ReadPipedInput(), nil
 	}
 
-	PrintInfo("cmd", prompt)
+	PrintInfo(prompt)
 
 	ta := textarea.New()
 	ta.Placeholder = placeholder

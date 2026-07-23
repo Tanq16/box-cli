@@ -16,9 +16,9 @@ var (
 	warnStyle    = lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(11))
 )
 
-func PrintInfo(pkg, msg string) {
+func PrintInfo(msg string) {
 	if GlobalDebugFlag {
-		log.Info().Str("package", pkg).Msg(msg)
+		log.Info().Msg(msg)
 	} else if GlobalForAIFlag {
 		fmt.Println("[INFO] " + msg)
 	} else {
@@ -26,9 +26,9 @@ func PrintInfo(pkg, msg string) {
 	}
 }
 
-func PrintSuccess(pkg, msg string) {
+func PrintSuccess(msg string) {
 	if GlobalDebugFlag {
-		log.Info().Str("package", pkg).Msg(msg)
+		log.Info().Msg(msg)
 	} else if GlobalForAIFlag {
 		fmt.Println("[OK] " + msg)
 	} else {
@@ -36,12 +36,12 @@ func PrintSuccess(pkg, msg string) {
 	}
 }
 
-func PrintError(pkg, msg string, err error) {
+func PrintError(msg string, err error) {
 	if GlobalDebugFlag {
 		if err != nil {
-			log.Error().Str("package", pkg).Err(err).Msg(msg)
+			log.Error().Err(err).Msg(msg)
 		} else {
-			log.Error().Str("package", pkg).Msg(msg)
+			log.Error().Msg(msg)
 		}
 	} else if GlobalForAIFlag {
 		fmt.Println("[ERROR] " + msg)
@@ -50,12 +50,12 @@ func PrintError(pkg, msg string, err error) {
 	}
 }
 
-func PrintFatal(pkg, msg string, err error) {
+func PrintFatal(msg string, err error) {
 	if GlobalDebugFlag {
 		if err != nil {
-			log.Error().Str("package", pkg).Err(err).Msg(msg)
+			log.Error().Err(err).Msg(msg)
 		} else {
-			log.Error().Str("package", pkg).Msg(msg)
+			log.Error().Msg(msg)
 		}
 	} else if GlobalForAIFlag {
 		fmt.Println("[ERROR] " + msg)
@@ -65,12 +65,12 @@ func PrintFatal(pkg, msg string, err error) {
 	os.Exit(1)
 }
 
-func PrintWarn(pkg, msg string, err error) {
+func PrintWarn(msg string, err error) {
 	if GlobalDebugFlag {
 		if err != nil {
-			log.Warn().Str("package", pkg).Err(err).Msg(msg)
+			log.Warn().Err(err).Msg(msg)
 		} else {
-			log.Warn().Str("package", pkg).Msg(msg)
+			log.Warn().Msg(msg)
 		}
 	} else if GlobalForAIFlag {
 		fmt.Println("[WARN] " + msg)
@@ -83,9 +83,9 @@ func PrintGeneric(msg string) {
 	fmt.Println(msg)
 }
 
-func PrintRunning(pkg, msg string) {
+func PrintRunning(msg string) {
 	if GlobalDebugFlag {
-		log.Info().Str("package", pkg).Msg(msg)
+		log.Info().Msg(msg)
 	} else if GlobalForAIFlag {
 		fmt.Println("[RUNNING] " + msg)
 	} else {
@@ -93,9 +93,9 @@ func PrintRunning(pkg, msg string) {
 	}
 }
 
-func PrintIndentedSuccess(pkg, msg string) {
+func PrintIndentedSuccess(msg string) {
 	if GlobalDebugFlag {
-		log.Info().Str("package", pkg).Msg(msg)
+		log.Info().Msg(msg)
 	} else if GlobalForAIFlag {
 		fmt.Println("[OK] " + msg)
 	} else {
@@ -103,12 +103,12 @@ func PrintIndentedSuccess(pkg, msg string) {
 	}
 }
 
-func PrintIndentedWarn(pkg, msg string, err error) {
+func PrintIndentedWarn(msg string, err error) {
 	if GlobalDebugFlag {
 		if err != nil {
-			log.Warn().Str("package", pkg).Err(err).Msg(msg)
+			log.Warn().Err(err).Msg(msg)
 		} else {
-			log.Warn().Str("package", pkg).Msg(msg)
+			log.Warn().Msg(msg)
 		}
 	} else if GlobalForAIFlag {
 		fmt.Println("[WARN] " + msg)
@@ -117,9 +117,9 @@ func PrintIndentedWarn(pkg, msg string, err error) {
 	}
 }
 
-func PrintIndentedRunning(pkg, msg string) {
+func PrintIndentedRunning(msg string) {
 	if GlobalDebugFlag {
-		log.Info().Str("package", pkg).Msg(msg)
+		log.Info().Msg(msg)
 	} else if GlobalForAIFlag {
 		fmt.Println("[RUNNING] " + msg)
 	} else {
@@ -127,12 +127,12 @@ func PrintIndentedRunning(pkg, msg string) {
 	}
 }
 
-func PrintIndentedError(pkg, msg string, err error) {
+func PrintIndentedError(msg string, err error) {
 	if GlobalDebugFlag {
 		if err != nil {
-			log.Error().Str("package", pkg).Err(err).Msg(msg)
+			log.Error().Err(err).Msg(msg)
 		} else {
-			log.Error().Str("package", pkg).Msg(msg)
+			log.Error().Msg(msg)
 		}
 	} else if GlobalForAIFlag {
 		fmt.Println("[ERROR] " + msg)
