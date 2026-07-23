@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	u "github.com/tanq16/box/utils"
@@ -218,6 +219,28 @@ func SaveToken(token *oauth2.Token) error {
 	return nil
 }
 
+type persistingTokenSource struct {
+	base oauth2.TokenSource
+	mu   sync.Mutex
+	last string
+}
+
+func (p *persistingTokenSource) Token() (*oauth2.Token, error) {
+	tok, err := p.base.Token()
+	if err != nil {
+		return nil, err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if tok.RefreshToken != p.last {
+		if err := SaveToken(tok); err != nil {
+			return nil, err
+		}
+		p.last = tok.RefreshToken
+	}
+	return tok, nil
+}
+
 func GetHTTPClient() (*http.Client, error) {
 	config, err := LoadCredentials()
 	if err != nil {
@@ -229,19 +252,15 @@ func GetHTTPClient() (*http.Client, error) {
 		return nil, err
 	}
 
-	tokenSource := config.TokenSource(context.Background(), token)
-
-	newToken, err := tokenSource.Token()
-	if err != nil {
+	source := &persistingTokenSource{
+		base: config.TokenSource(context.Background(), token),
+		last: token.RefreshToken,
+	}
+	if _, err := source.Token(); err != nil {
 		return nil, fmt.Errorf("token refresh failed — run 'box login' again")
 	}
-	if newToken.AccessToken != token.AccessToken {
-		if err := SaveToken(newToken); err != nil {
-			return nil, err
-		}
-	}
 
-	return oauth2.NewClient(context.Background(), tokenSource), nil
+	return oauth2.NewClient(context.Background(), source), nil
 }
 
 func generateState() (string, error) {
